@@ -62,12 +62,19 @@ def page_content(page, language):
     return PageContent.admin_manager.filter(page=page, language=language).latest_content().first()
 
 
+def page_site_id(page) -> int:
+    """django CMS 5 has Page.site_id; 4.x keeps the site on the tree node."""
+    site_id = getattr(page, "site_id", None)
+    return site_id if site_id is not None else page.node.site_id
+
+
 def site_languages(page) -> list[dict]:
     from cms.utils.i18n import get_language_list, get_language_object
 
+    site_id = page_site_id(page)
     out = []
-    for code in get_language_list(page.site_id):
-        language = get_language_object(code, page.site_id)
+    for code in get_language_list(site_id):
+        language = get_language_object(code, site_id)
         out.append({"code": code, "name": str(language.get("name", code))})
     return out
 
@@ -195,7 +202,6 @@ def _remap_inline_plugins(html: str, new_ids: dict[str, str]) -> str:
 
 def _apply(page, source: _Source, translated: dict[int, str], language: str, existing, user) -> bool:
     from cms.api import create_page_content
-    from cms.utils.plugins import copy_plugins_to_placeholder
 
     values = {unit.field: translated.get(i, "").strip() for i, unit in enumerate(source.units) if unit.plugin is None}
     values = {name: value for name, value in values.items() if value}
@@ -240,7 +246,7 @@ def _apply(page, source: _Source, translated: dict[int, str], language: str, exi
                     placeholder.delete_plugin(placeholder.get_plugins(language).get(pk=plugin.pk))
         if not plugins:
             continue
-        copies = copy_plugins_to_placeholder(plugins, placeholder, language=language, plugins_are_downcast=True)
+        copies = _copy_plugins(plugins, placeholder, language)
         # Text bodies reference their inline plugins (<cms-plugin id="…">): point them at the copies.
         new_ids = {str(original.pk): str(copy.pk) for original, copy in zip(plugins, copies)}
         for original, copy in zip(plugins, copies):
@@ -252,5 +258,16 @@ def _apply(page, source: _Source, translated: dict[int, str], language: str, exi
                 setattr(copy, name, _remap_inline_plugins(value, new_ids))
             copy.save()
 
-    page._clear_internal_cache()
+    if hasattr(page, "_clear_internal_cache"):  # django CMS 5
+        page._clear_internal_cache()
     return created
+
+
+def _copy_plugins(plugins, placeholder, language):
+    import inspect
+
+    from cms.utils.plugins import copy_plugins_to_placeholder
+
+    if "plugins_are_downcast" in inspect.signature(copy_plugins_to_placeholder).parameters:  # django CMS 5
+        return copy_plugins_to_placeholder(plugins, placeholder, language=language, plugins_are_downcast=True)
+    return copy_plugins_to_placeholder(plugins, placeholder, language=language)
