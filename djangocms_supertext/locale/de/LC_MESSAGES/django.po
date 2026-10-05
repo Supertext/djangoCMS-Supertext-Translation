@@ -1,0 +1,212 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: djangocms-supertext-translation\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "API"
+msgstr "API"
+
+msgid "API key"
+msgstr "API-Schlüssel"
+
+msgid "Already translated"
+msgstr "Bereits übersetzt"
+
+msgid "Already translated."
+msgstr "Bereits übersetzt."
+
+msgid "Can translate pages with Supertext"
+msgstr "Kann Seiten mit Supertext übersetzen"
+
+msgid ""
+"Checks the API key against the Supertext API. Nothing is translated or "
+"charged."
+msgstr ""
+"Prüft den API-Schlüssel bei der Supertext-API. Es wird nichts übersetzt oder"
+" verrechnet."
+
+msgid "Connected. The API key works."
+msgstr "Verbunden. Der API-Schlüssel funktioniert."
+
+msgid "Connection"
+msgstr "Verbindung"
+
+msgid "Default"
+msgstr "Standard"
+
+msgid "Form of address"
+msgstr "Anrede"
+
+msgid "Formal (Sie, vous)"
+msgstr "Formell (Sie, vous)"
+
+msgid "From"
+msgstr "Aus"
+
+msgid "Informal (du, tu)"
+msgstr "Informell (du, tu)"
+
+msgid "Into"
+msgstr "In"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Languages"
+msgstr "Sprachen"
+
+msgid ""
+"Languages that already exist are replaced by a new translation of the "
+"source: the page fields and all plugins. Changes made in those languages are"
+" lost. Leave this off to translate only the missing languages."
+msgstr ""
+"Bestehende Sprachen werden durch eine neue Übersetzung der Quelle ersetzt: "
+"die Seitenfelder und alle Plugins. Änderungen in diesen Sprachen gehen "
+"verloren. Ausgeschaltet lassen, um nur fehlende Sprachen zu übersetzen."
+
+msgid "Missing: set SUPERTEXT_API_KEY"
+msgstr "Fehlt: SUPERTEXT_API_KEY setzen"
+
+msgid "No Supertext API key is configured. Set SUPERTEXT_API_KEY."
+msgstr ""
+"Es ist kein Supertext-API-Schlüssel eingerichtet. Setzen Sie "
+"SUPERTEXT_API_KEY."
+
+msgid "Open"
+msgstr "Öffnen"
+
+msgid ""
+"Open a language to review it, or close this dialog and reload the page."
+msgstr ""
+"Öffnen Sie eine Sprache, um sie zu prüfen, oder schliessen Sie diesen Dialog"
+" und laden Sie die Seite neu."
+
+msgid "Overwrite existing translations"
+msgstr "Bestehende Übersetzungen überschreiben"
+
+msgid "Page"
+msgstr "Seite"
+
+msgid "Set (SUPERTEXT setting)"
+msgstr "Gesetzt (Einstellung SUPERTEXT)"
+
+msgid "Set (environment variable SUPERTEXT_API_KEY)"
+msgstr "Gesetzt (Umgebungsvariable SUPERTEXT_API_KEY)"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Settings and connection"
+msgstr "Einstellungen und Verbindung"
+
+msgid "Supertext"
+msgstr "Supertext"
+
+msgid ""
+"Supertext is not set up yet: an administrator needs to set "
+"SUPERTEXT_API_KEY."
+msgstr ""
+"Supertext ist noch nicht eingerichtet: Eine Administratorin oder ein "
+"Administrator muss SUPERTEXT_API_KEY setzen."
+
+msgid "Supertext language"
+msgstr "Supertext-Sprache"
+
+msgid "Supertext settings"
+msgstr "Supertext-Einstellungen"
+
+msgid ""
+"Supertext translates the saved content of the source language. Each language"
+" takes a few seconds."
+msgstr ""
+"Supertext übersetzt den gespeicherten Inhalt der Ausgangssprache. Jede "
+"Sprache dauert ein paar Sekunden."
+
+msgid "Supertext translation"
+msgstr "Supertext-Übersetzung"
+
+msgid "Supertext translations"
+msgstr "Supertext-Übersetzungen"
+
+msgid "Test connection"
+msgstr "Verbindung testen"
+
+msgid ""
+"The django CMS languages of each site, with the Supertext language and form "
+"of address they are translated with. Change them in the SUPERTEXT setting "
+"(LANGUAGES)."
+msgstr ""
+"Die django-CMS-Sprachen jeder Website mit der Supertext-Sprache und der "
+"Anrede, mit der übersetzt wird. Ändern lässt sich das in der Einstellung "
+"SUPERTEXT (LANGUAGES)."
+
+#, python-format
+msgid "The page has no %(language)s version to translate from."
+msgstr ""
+"Die Seite hat keine Fassung in %(language)s, aus der übersetzt werden kann."
+
+msgid ""
+"This language is published. Create a draft of it, then translate again."
+msgstr ""
+"Diese Sprache ist veröffentlicht. Erstellen Sie einen Entwurf davon und "
+"übersetzen Sie dann erneut."
+
+msgid "Timeout per language"
+msgstr "Zeitlimit pro Sprache"
+
+msgid "Translate"
+msgstr "Übersetzen"
+
+msgid "Translate with Supertext"
+msgstr "Mit Supertext übersetzen"
+
+#, python-format
+msgid "Translated with Supertext on %(date)s"
+msgstr "Am %(date)s mit Supertext übersetzt"
+
+msgid "Translating…"
+msgstr "Wird übersetzt …"
+
+msgid "already translated, skipped"
+msgstr "bereits übersetzt, übersprungen"
+
+msgid "date"
+msgstr "Datum"
+
+msgid "error"
+msgstr "Fehler"
+
+msgid "from"
+msgstr "aus"
+
+msgid "into"
+msgstr "in"
+
+msgid "message"
+msgstr "Meldung"
+
+msgid "page"
+msgstr "Seite"
+
+msgid "skipped"
+msgstr "übersprungen"
+
+msgid "status"
+msgstr "Status"
+
+msgid "translated"
+msgstr "übersetzt"
+
+msgid "translation created"
+msgstr "Übersetzung erstellt"
+
+msgid "translation replaced"
+msgstr "Übersetzung ersetzt"
+
+msgid "user"
+msgstr "Benutzer"

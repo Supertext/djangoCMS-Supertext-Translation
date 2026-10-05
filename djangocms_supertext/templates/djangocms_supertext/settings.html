@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a> ›
+  <a href="{% url 'admin:app_list' 'djangocms_supertext' %}">Supertext</a> ›
+  {% translate "Settings" %}
+</div>
+{% endblock %}
+{% block content %}
+<div id="content-main" style="max-width: 860px">
+  <h2>{% translate "Connection" %}</h2>
+  <table>
+    <tr><th>{% translate "API key" %}</th><td>
+      {% if options.api_key %}
+        {% if options.api_key_source == "environment" %}{% translate "Set (environment variable SUPERTEXT_API_KEY)" %}{% else %}{% translate "Set (SUPERTEXT setting)" %}{% endif %}
+      {% else %}<strong>{% translate "Missing: set SUPERTEXT_API_KEY" %}</strong>{% endif %}
+    </td></tr>
+    <tr><th>{% translate "API" %}</th><td><code data-supertext-endpoint>{{ options.base_url }}</code></td></tr>
+    <tr><th>{% translate "Timeout per language" %}</th><td>{{ options.timeout|floatformat:0 }} s</td></tr>
+  </table>
+  <form method="post" style="margin: 12px 0 28px">
+    {% csrf_token %}
+    <input type="submit" value="{% translate 'Test connection' %}">
+    <span class="help">{% translate "Checks the API key against the Supertext API. Nothing is translated or charged." %}</span>
+  </form>
+
+  <h2>{% translate "Languages" %}</h2>
+  <p class="help">{% translate "The django CMS languages of each site, with the Supertext language and form of address they are translated with. Change them in the SUPERTEXT setting (LANGUAGES)." %}</p>
+  {% for item in sites %}
+    <h3>{{ item.site.name }} <span class="help" data-supertext-domain>{{ item.site.domain }}</span></h3>
+    <table>
+      <thead><tr><th>{% translate "Language" %}</th><th>{% translate "Supertext language" %}</th><th>{% translate "Form of address" %}</th></tr></thead>
+      <tbody>
+        {% for lang in item.languages %}
+          <tr>
+            <td>{{ lang.name }} <code>{{ lang.code }}</code></td>
+            <td><code>{{ lang.target }}</code></td>
+            <td>{% if lang.politeness == "more" %}{% translate "Formal (Sie, vous)" %}{% elif lang.politeness == "less" %}{% translate "Informal (du, tu)" %}{% else %}{% translate "Default" %}{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% load i18n menu_tags %}{% spaceless %}
+<ul class="languages">
+  {% for language in languages %}
+    <li{% if current_language == language.0 %} class="active"{% endif %}><a href="{% page_language_url language.0 %}" lang="{{ language.0 }}">{{ language.0|slice:":2"|upper }}</a></li>
+  {% endfor %}
+</ul>
+{% endspaceless %}

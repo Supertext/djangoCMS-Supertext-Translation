@@ -1,0 +1,6 @@
+.git
+**/__pycache__
+demo/db.sqlite3
+demo/static
+tests/docs/node_modules
+docs/images

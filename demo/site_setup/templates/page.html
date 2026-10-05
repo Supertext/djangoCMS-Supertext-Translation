@@ -1,0 +1,41 @@
+{% load cms_tags menu_tags sekizai_tags i18n %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% page_attribute "page_title" %} – Supertext django CMS Demo</title>
+  <meta name="description" content="{% page_attribute 'meta_description' %}">
+  {% render_block "css" %}
+  <style>
+    body { font: 17px/1.6 system-ui, sans-serif; margin: 0; color: #1f2933; background: #f7f8fa; }
+    header, main, footer { max-width: 720px; margin: 0 auto; padding: 16px 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    header a { color: inherit; text-decoration: none; }
+    header .brand { font-weight: 600; }
+    header nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; }
+    header nav a { color: #52606d; }
+    header nav a.selected, header nav .selected a { color: #e2001a; font-weight: 600; }
+    .languages { list-style: none; display: flex; gap: 10px; margin: 0; padding: 0; }
+    .languages a { color: #52606d; text-decoration: none; }
+    .languages .active a { color: #e2001a; font-weight: 600; }
+    article { background: #fff; border-radius: 8px; padding: 24px 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    footer { color: #7b8794; font-size: 14px; }
+  </style>
+</head>
+<body>
+{% cms_toolbar %}
+<header>
+  <a class="brand" href="/{{ LANGUAGE_CODE }}/">Supertext django CMS Demo</a>
+  <nav><ul>{% show_menu 0 100 0 0 %}</ul></nav>
+  {% language_chooser "menu/language_chooser.html" %}
+</header>
+<main>
+  <article>
+    <h1>{% page_attribute "title" %}</h1>
+    {% placeholder "content" %}
+  </article>
+</main>
+<footer>Demo of <a href="https://github.com/Supertext/djangoCMS-Supertext-Translation">Supertext Translation for django CMS</a>.</footer>
+{% render_block "js" %}
+</body>
+</html>

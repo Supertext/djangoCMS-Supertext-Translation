@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "djangocms-supertext-translation"
+dynamic = ["version"]
+description = "Supertext AI translation for django CMS: translate pages into the site's other languages"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Supertext AG", email = "support@supertext.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    "django-cms>=4.1",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+]
+classifiers = [
+    "Framework :: Django",
+    "Framework :: Django CMS",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-django>=4.9", "djangocms-text>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/Supertext/djangoCMS-Supertext-Translation"
+
+[tool.hatch.version]
+path = "djangocms_supertext/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["djangocms_supertext"]
+
+[tool.hatch.build.targets.sdist]
+include = ["djangocms_supertext", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+testpaths = ["tests"]
