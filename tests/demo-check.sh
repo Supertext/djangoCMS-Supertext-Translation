@@ -21,8 +21,9 @@ start() {
 
 start
 start   # second start: nothing duplicated or changed
-docker logs demo 2>&1 | grep -q 'DEMO_EDITOR: account exists, left unchanged'
-if docker logs demo 2>&1 | grep -qF -e "$DEMO_ADMIN_PASSWORD" -e "$DEMO_EDITOR_PASSWORD"; then echo "A password appeared in the log"; exit 1; fi
+docker logs demo 2>&1 | grep > /dev/null 'DEMO_EDITOR: account exists, left unchanged'
+logs=$(docker logs demo 2>&1)
+if grep -qF -e "$DEMO_ADMIN_PASSWORD" -e "$DEMO_EDITOR_PASSWORD" <<< "$logs"; then echo "A password appeared in the log"; exit 1; fi
 
 py shell -c "
 from django.contrib.auth.models import User
@@ -37,11 +38,11 @@ py supertext_check
 PAGE=$(py shell -c "from cms.models import PageContent; print(PageContent.admin_manager.get(language='en', title='Swiss chocolate, shipped worldwide').page_id)" | tail -1)
 py supertext_translate "$PAGE" --from en | tee /tmp/translate.log
 test "$(grep -c ': translated' /tmp/translate.log)" = 3
-py supertext_translate "$PAGE" --from en --to de-ch | grep -q 'skipped'
+py supertext_translate "$PAGE" --from en --to de-ch | grep > /dev/null 'skipped'
 
 page=$(curl -sf "$B/de-ch/schweizer-schokolade-weltweit-versandt/")
-echo "$page" | grep -q 'Schweizer Schokolade, weltweit versandt'
-echo "$page" | grep -q '<strong>Berner</strong>'
-echo "$page" | grep -q 'href="https://www.supertext.com"'
-curl -sf "$B/fr-ch/chocolat-suisse-expedie-dans-le-monde-entier/" | grep -q 'De Berne vers le monde'
+echo "$page" | grep > /dev/null 'Schweizer Schokolade, weltweit versandt'
+echo "$page" | grep > /dev/null '<strong>Berner</strong>'
+echo "$page" | grep > /dev/null 'href="https://www.supertext.com"'
+curl -sf "$B/fr-ch/chocolat-suisse-expedie-dans-le-monde-entier/" | grep > /dev/null 'De Berne vers le monde'
 echo "Demo check passed"
