@@ -113,6 +113,8 @@ class TranslationAdmin(admin.ModelAdmin):
             "languages": languages,
             "source": source,
             "configured": bool(options.api_key),
+            "signup_url": conf.SIGNUP_URL,
+            "api_key_url": conf.API_KEY_URL,
             "results": [
                 {"result": r, "name": names.get(r.language, r.language), "url": _edit_url(page, r.language)}
                 for r in results or []
@@ -154,6 +156,8 @@ class TranslationAdmin(admin.ModelAdmin):
             "title": _("Supertext settings"),
             "options": options,
             "sites": sites,
+            "signup_url": conf.SIGNUP_URL,
+            "api_key_url": conf.API_KEY_URL,
             "opts": self.model._meta,
         }
         return TemplateResponse(request, "djangocms_supertext/settings.html", context)

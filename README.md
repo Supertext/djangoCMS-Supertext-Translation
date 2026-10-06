@@ -22,6 +22,8 @@ In edit mode, choose **Language → Translate with Supertext…**, tick the lang
 | [User guide](docs/USER_GUIDE.md) | Editors: translating, reviewing, overwriting, what gets translated |
 | [Developer guide](docs/DEVELOPER.md) | Architecture, API protocol, local development, tests, demo deployment, releases |
 
+Requires a Supertext account ([create one or log in](https://www.supertext.com/person/en/account/signin)) and an API key from [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role in the Supertext account).
+
 Quick start:
 
 ```bash

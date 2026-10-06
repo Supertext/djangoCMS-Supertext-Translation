@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - New languages get a slug from the translated title; with djangocms-versioning they are created as drafts, and published languages are not overwritten.
 - Permission *Can translate pages with Supertext*; page change permissions apply.
 - Admin: a log of all Supertext translations and a settings page with *Test connection* (superusers).
+- The settings page, the "not set up yet" notice in the translate dialog and `supertext_check` link to the Supertext account signup and to supertext.com → Integrations → API, where users with the Admin role generate the API key. Installation guide and README explain the same.
 - Settings: `SUPERTEXT_API_KEY` (with or without the `Supertext-Auth-Key` prefix), `SUPERTEXT_API_URL`, and the `SUPERTEXT` setting (environment, languages and tone, timeout, plugin fields).
 - Management commands `supertext_translate` and `supertext_check`.
 - Retries when the Supertext API answers HTTP 429 (rate limit).

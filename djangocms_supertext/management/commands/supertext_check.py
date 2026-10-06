@@ -10,7 +10,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         settings = conf.load()
         if not settings.api_key:
-            raise CommandError("No Supertext API key is configured. Set SUPERTEXT_API_KEY.")
+            raise CommandError(
+                "No Supertext API key is configured. Set SUPERTEXT_API_KEY.\n"
+                f"No Supertext account yet? Create one at {conf.SIGNUP_URL}\n"
+                f"Generate your API key at {conf.API_KEY_URL} (supertext.com → Integrations → API; requires the Admin role)."
+            )
         try:
             settings.client().validate_api_key()
         except SupertextError as error:

@@ -18,6 +18,10 @@ from dataclasses import dataclass, field
 
 from .client import SupertextClient, base_url_for, normalize_key
 
+#: Where administrators create a Supertext account (or log in) and generate the API key.
+SIGNUP_URL = "https://www.supertext.com/person/en/account/signin"
+API_KEY_URL = "https://www.supertext.com/en/integrations/api"
+
 #: Plugin fields translated out of the box: plugin type -> {model field: "text" | "html"}.
 DEFAULT_PLUGIN_FIELDS: dict[str, dict[str, str]] = {
     "TextPlugin": {"body": "html"},  # djangocms-text (and djangocms-text-ckeditor)

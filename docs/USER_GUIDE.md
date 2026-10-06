@@ -63,7 +63,7 @@ Empty fields are skipped.
 
 | Message | Meaning |
 | --- | --- |
-| *Supertext is not set up yet: …* | No API key on the server. Ask your administrator. |
+| *Supertext is not set up yet: …* | No API key on the server. Ask your administrator; the message links to where they create a Supertext account and the API key. |
 | *already translated, skipped* | The language exists and *Overwrite existing translations* was off. |
 | *The page has no … version to translate from.* | Choose another *From* language. |
 | *This language is published. Create a draft of it, then translate again.* | With versioning, overwrite a draft, not the published version. |

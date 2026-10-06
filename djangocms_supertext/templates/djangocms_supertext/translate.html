@@ -31,7 +31,7 @@
   <p class="st-page">{% translate "Page" %}: <strong>{{ page }}</strong></p>
 
   {% if not configured %}
-    <p class="errornote">{% translate "Supertext is not set up yet: an administrator needs to set SUPERTEXT_API_KEY." %}</p>
+    <p class="errornote">{% translate "Supertext is not set up yet: an administrator needs to set SUPERTEXT_API_KEY." %}<br>{% blocktranslate trimmed %}No Supertext account yet? <a href="{{ signup_url }}" target="_blank" rel="noopener">Create one at supertext.com</a>. Generate your API key at <a href="{{ api_key_url }}" target="_blank" rel="noopener">supertext.com → Integrations → API</a> (requires the Admin role).{% endblocktranslate %}</p>
   {% endif %}
 
   {% if results %}

@@ -7,7 +7,7 @@ For administrators and developers who install and set up the package. Editors fi
 - django CMS 4.1 or later (tested with 5.1), Django 4.2 or later, Python 3.10 or later
 - More than one language in `LANGUAGES` / `CMS_LANGUAGES`
 - [djangocms-text](https://github.com/django-cms/djangocms-text) (or another text plugin with a `body` field) for rich text
-- A Supertext account with an API key (Supertext → Account → API)
+- A Supertext account ([log in or create one](https://www.supertext.com/person/en/account/signin)) and an API key from [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (see [API key](#api-key))
 - The server must reach `https://api.supertext.com` over HTTPS
 
 ## Install
@@ -55,6 +55,9 @@ Remove `"djangocms_supertext"` from `INSTALLED_APPS` after running `python manag
 
 ## API key
 
+1. **No Supertext account yet?** [Create one at supertext.com](https://www.supertext.com/person/en/account/signin) (the same page logs you in if you already have one; you sign in with your email address).
+2. **Generate the API key** at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api). Only users with the **Admin** role in the Supertext account can do this; otherwise ask your account's admin.
+
 Set the key as an environment variable of the server:
 
 ```bash
@@ -63,9 +66,9 @@ SUPERTEXT_API_KEY="your-key"
 
 You can paste it with or without the `Supertext-Auth-Key ` prefix that Supertext shows; the package sends it as `Authorization: Supertext-Auth-Key <key>`. Alternatively set `"API_KEY"` in the `SUPERTEXT` setting (below); the environment variable wins. Keep the key out of your repository.
 
-Check it in the admin under *Supertext → Supertext translations → Settings and connection → Test connection* (superusers), or with `python manage.py supertext_check`. Both call a cost-free endpoint of the Supertext API.
+Check it in the admin under *Supertext → Supertext translations → Settings and connection → Test connection* (superusers), or with `python manage.py supertext_check`. Both call a cost-free endpoint of the Supertext API. While no key is set, the settings page, the translate dialog and `supertext_check` link to the account signup and the API key page.
 
-![The Supertext settings page: "Connected. The API key works.", the API key's source, the live API address, the timeout, and the languages of the site with their Supertext code and form of address](images/06-settings.png)
+![The Supertext settings page: "Connected. The API key works.", the API key's source, the live API address, the timeout, links to create a Supertext account and to generate the API key, and the languages of the site with their Supertext code and form of address](images/06-settings.png)
 
 ## Languages
 
@@ -135,8 +138,8 @@ Translating runs in the editor's request: a few seconds per language, up to `TIM
 | Symptom | Cause and fix |
 | --- | --- |
 | No *Translate with Supertext…* in the Language menu | The toolbar isn't in edit mode, the app isn't in `INSTALLED_APPS`, or the user lacks `djangocms_supertext.translate` or permission to change the page. |
-| *Supertext is not set up yet* in the dialog | `SUPERTEXT_API_KEY` is not set on the server. |
-| *Authentication failed. Please check the Supertext API key.* | Wrong or revoked key, or a key for another environment. Use *Test connection*. |
+| *Supertext is not set up yet* in the dialog | `SUPERTEXT_API_KEY` is not set on the server. Generate a key at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and set it. |
+| *Authentication failed. Please check the Supertext API key.* | Wrong or revoked key, or a key for another environment. Generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and use *Test connection*. |
 | *This language is published. Create a draft of it, then translate again.* | With djangocms-versioning, only drafts can be changed. Create a draft of that language (or delete the language) and translate again. |
 | *Too many requests to Supertext* | The API's per-second limit was hit repeatedly although the package retries. Try again shortly. |
 | *Timed out waiting for the Supertext translation* or a 502/504 from the proxy | Very long page: raise `TIMEOUT` and the web server's request timeout. |
