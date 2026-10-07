@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+## 0.1.0 — 2026-10-07
+
 ### Added
 
 - First version for django CMS 4.1 and later.
