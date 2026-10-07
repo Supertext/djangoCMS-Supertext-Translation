@@ -66,9 +66,9 @@ SUPERTEXT_API_KEY="your-key"
 
 You can paste it with or without the `Supertext-Auth-Key ` prefix that Supertext shows; the package sends it as `Authorization: Supertext-Auth-Key <key>`. Alternatively set `"API_KEY"` in the `SUPERTEXT` setting (below); the environment variable wins. Keep the key out of your repository.
 
-Check it in the admin under *Supertext → Supertext translations → Settings and connection → Test connection* (superusers), or with `python manage.py supertext_check`. Both call a cost-free endpoint of the Supertext API. While no key is set, the settings page, the translate dialog and `supertext_check` link to the account signup and the API key page.
+Check it in the admin under *Supertext → Supertext translations → Settings and connection → Test connection* (superusers), or with `python manage.py supertext_check`. Both call a cost-free endpoint of the Supertext API. While no key is set, the settings page, the translate dialog and `supertext_check` link to the account signup and the API key page. The settings page also shows the installed *Plugin version* (django CMS doesn't list app versions in its admin); a release version links to its release notes on GitHub.
 
-![The Supertext settings page: "Connected. The API key works.", the API key's source, the live API address, the timeout, links to create a Supertext account and to generate the API key, and the languages of the site with their Supertext code and form of address](images/06-settings.png)
+![The Supertext settings page: "Connected. The API key works.", the API key's source, the live API address, the timeout, the plugin version, links to create a Supertext account and to generate the API key, and the languages of the site with their Supertext code and form of address](images/06-settings.png)
 
 ## Languages
 

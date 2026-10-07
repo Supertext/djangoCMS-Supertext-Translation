@@ -140,5 +140,19 @@ def test_settings_page(session, client):
     url = reverse("admin:djangocms_supertext_settings")
     response = client.get(url)
     assert response.status_code == 200 and b"https://api.test/v1/" in response.content and b"de-CH" in response.content
+    from djangocms_supertext import __version__
+
+    release = f"https://github.com/Supertext/djangoCMS-Supertext-Translation/releases/tag/v{__version__}"
+    assert b"Plugin version" in response.content and f">{__version__}</a>".encode() in response.content
+    assert f'href="{release}" target="_blank" rel="noopener"'.encode() in response.content
     response = client.post(url, follow=True)
     assert b"Connected. The API key works." in response.content
+
+
+def test_settings_page_version_without_release(session, client, monkeypatch):
+    from djangocms_supertext import admin as st_admin
+
+    monkeypatch.setattr(st_admin, "__version__", "0.2.0.dev1")
+    client.force_login(User.objects.create_superuser("admin", "admin@example.com", "pw-123456789"))
+    response = client.get(reverse("admin:djangocms_supertext_settings"))
+    assert b"0.2.0.dev1" in response.content and b"releases/tag" not in response.content

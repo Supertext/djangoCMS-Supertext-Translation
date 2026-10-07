@@ -18,6 +18,7 @@
     </td></tr>
     <tr><th>{% translate "API" %}</th><td><code data-supertext-endpoint>{{ options.base_url }}</code></td></tr>
     <tr><th>{% translate "Timeout per language" %}</th><td>{{ options.timeout|floatformat:0 }} s</td></tr>
+    <tr><th>{% translate "Plugin version" %}</th><td data-supertext-version>{% if version.url %}<a href="{{ version.url }}" target="_blank" rel="noopener">{{ version.number }}</a>{% else %}{{ version.number }}{% endif %}</td></tr>
   </table>
   <p class="help" data-supertext-key-help>{% blocktranslate trimmed %}No Supertext account yet? <a href="{{ signup_url }}" target="_blank" rel="noopener">Create one at supertext.com</a>. Generate your API key at <a href="{{ api_key_url }}" target="_blank" rel="noopener">supertext.com → Integrations → API</a> (requires the Admin role).{% endblocktranslate %}</p>
   <form method="post" style="margin: 12px 0 28px">

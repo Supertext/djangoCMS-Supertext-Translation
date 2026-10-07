@@ -159,6 +159,9 @@ msgstr ""
 msgid "Timeout per language"
 msgstr "Zeitlimit pro Sprache"
 
+msgid "Plugin version"
+msgstr "Plugin-Version"
+
 msgid "Translate"
 msgstr "Übersetzen"
 

@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## Unreleased
 
+### Added
+
+- The settings page shows the installed plugin version, linked to its release notes on GitHub.
+
 ## 0.1.0 — 2026-10-07
 
 ### Added

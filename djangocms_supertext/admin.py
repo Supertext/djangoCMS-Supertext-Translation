@@ -9,6 +9,8 @@ toolbar) and the Supertext settings page with "Test connection".
 
 from __future__ import annotations
 
+import re
+
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
@@ -18,11 +20,20 @@ from django.urls import path, reverse
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
-from . import conf, translator
+from . import __version__, conf, translator
 from .client import SupertextError
 from .models import Translation
 
 PERMISSION = "djangocms_supertext.translate"
+RELEASES_URL = "https://github.com/Supertext/djangoCMS-Supertext-Translation/releases/tag/v{version}"
+
+
+def plugin_version() -> dict:
+    """The installed package version (``djangocms_supertext.__version__``) and, for a release
+    (X.Y.Z), the link to its GitHub release."""
+    version = __version__
+    url = RELEASES_URL.format(version=version) if re.fullmatch(r"\d+\.\d+\.\d+", version) else ""
+    return {"number": version, "url": url}
 
 
 class TranslateForm(forms.Form):
@@ -159,6 +170,7 @@ class TranslationAdmin(admin.ModelAdmin):
             "signup_url": conf.SIGNUP_URL,
             "api_key_url": conf.API_KEY_URL,
             "opts": self.model._meta,
+            "version": plugin_version(),
         }
         return TemplateResponse(request, "djangocms_supertext/settings.html", context)
 

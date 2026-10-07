@@ -30,7 +30,7 @@ _apply(): create_page_content() (new language) or update the fields; replace the
 | `conf.py` | `SUPERTEXT` setting + `SUPERTEXT_API_KEY` / `SUPERTEXT_API_URL`; language code → Supertext code (`de-ch` → `de-CH`) and tone; `DEFAULT_PLUGIN_FIELDS` |
 | `translator.py` | Field rules, translation, creating/replacing the target language |
 | `models.py` | `Translation` (log; custom permission `translate`) |
-| `admin.py` | Log list, translate dialog, settings page with *Test connection* (all as admin views, no URL include needed) |
+| `admin.py` | Log list, translate dialog, settings page with *Test connection* and the plugin version (read from `djangocms_supertext.__version__`; X.Y.Z links to the GitHub release `vX.Y.Z`) (all as admin views, no URL include needed) |
 | `cms_toolbars.py` | The toolbar entry |
 | `management/commands/` | `supertext_translate <page id> --from en [--to de-ch fr-ch] [--overwrite]`, `supertext_check` |
 | `locale/de/` | German strings |
@@ -84,7 +84,7 @@ pytest
 
 - `tests/test_client.py`: the API protocol, auth header and prefix, 429 retries, errors, clean-up.
 - `tests/test_document.py`: HTML packing and parsing, line breaks, chunking, settings and language codes.
-- `tests/test_translator.py`: end to end on SQLite with a fake API: a page with Text plugins in two placeholders is translated into two languages (fields, slug, markup, tone, plugins in the right placeholders, source untouched), skip and overwrite (no duplicated plugins), per-language errors, the translate dialog as an editor (and 403 without the permission), the settings page and *Test connection*.
+- `tests/test_translator.py`: end to end on SQLite with a fake API: a page with Text plugins in two placeholders is translated into two languages (fields, slug, markup, tone, plugins in the right placeholders, source untouched), skip and overwrite (no duplicated plugins), per-language errors, the translate dialog as an editor (and 403 without the permission), the settings page (including the plugin version and its release link) and *Test connection*.
 - `tests/test_versioning.py` (`pytest --ds=tests.settings_versioning tests/test_versioning.py`, needs djangocms-versioning): new languages are drafts, published languages are not overwritten.
 
 CI (`.github/workflows/ci.yml`) on every push and pull request:
