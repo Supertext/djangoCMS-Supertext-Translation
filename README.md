@@ -86,6 +86,12 @@ Supertext offers AI and professional translation plugins for these systems:
 | Akeneo PIM | [Akeneo-Supertext-Translation](https://github.com/Supertext/Akeneo-Supertext-Translation-) | Symfony bundle (Composer) for the Community Edition, with an action on the product edit form and a System page. | *Translate with Supertext* for products and product models, into your other locales |
 | AtroPIM | [AtroPIM-Supertext-Translation](https://github.com/Supertext/AtroPIM-Supertext-Translation) | AtroCore module (Composer) that adds an action type and a Supertext connection type. | *Translate with Supertext* button and mass action for products and other records, into your other languages |
 | Pimcore | [Pimcore-Supertext-Translation](https://github.com/Supertext/Pimcore-Supertext-Translation) | Pimcore bundle (Composer) with a Pimcore Studio panel. | *In development:* translates documents and data objects into the other languages |
+
+### Shop systems (e-commerce)
+
+| System | Plugin | Type of integration | What it does |
+| --- | --- | --- | --- |
+| PrestaShop | [PrestaShop-Supertext-Translation](https://github.com/Supertext/PrestaShop-Supertext-Translation) | PrestaShop module (zip upload) that adds an action to the Products, Categories and Pages lists. | *Translate with Supertext* for products, categories and CMS pages, into the shop's other languages |
 <!-- supertext-plugins:end -->
 
 ## License
