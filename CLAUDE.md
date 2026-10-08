@@ -23,6 +23,10 @@ Everywhere an administrator enters or is told about the API key — the settings
 
 Wording: "No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role)." In the UI, links open in a new tab (`target="_blank" rel="noopener"`); where the CMS shows plain text only, use the bare URLs. New screens or messages that mention the key get the links too.
 
+## UI languages (always)
+
+The plugin's own UI (buttons, panels, dialogs, settings, permissions, messages) is available in English, German, French and Italian through the CMS's own translation mechanism, so it follows the user's back-end language. New or changed strings get all four languages in the same commit. Formal address (Sie, vous, Lei), the CMS's own terms in each language, "Supertext", placeholders and URLs never translated.
+
 ## Plugin list (always)
 
 `README.md` ends with the shared list of all Supertext plugins (between the `<!-- supertext-plugins:start -->` and `<!-- supertext-plugins:end -->` markers). It is identical in every Supertext plugin repo: when a plugin is added, renamed or its description changes, update the list in **all** repos, not just this one.
@@ -75,7 +79,7 @@ Lessons from the live API, apply them here: header `Authorization: Supertext-Aut
 - Before committing: `pytest` (unit tests plus django CMS end to end on SQLite); with djangocms-versioning installed also `pytest --ds=tests.settings_versioning tests/test_versioning.py`. CI also runs django CMS 4.x/5.0/5.1 and the demo against PostgreSQL and the stand-in (`tests/demo-check.sh`).
 - New options go in `djangocms_supertext/conf.py` **and** the settings table in `docs/INSTALLATION.md`.
 - Field rules live in `djangocms_supertext/translator.py` (`PAGE_FIELDS`) and `conf.DEFAULT_PLUGIN_FIELDS`; keep "Field rules" in `docs/DEVELOPER.md` and "What is translated" in `docs/USER_GUIDE.md` in sync.
-- Admin strings: update `djangocms_supertext/locale/de/LC_MESSAGES/django.po` and recompile the `.mo` (`python -c "import polib; polib.pofile('…/django.po').save_as_mofile('…/django.mo')"`).
+- Admin strings (including the error messages in `client.py`, marked with its own `gettext_noop`): update `djangocms_supertext/locale/{de,fr,it}/LC_MESSAGES/django.po` and recompile each `.mo`; `tests/test_locale.py` checks they are complete (`python -c "import polib; polib.pofile('…/django.po').save_as_mofile('…/django.mo')"`).
 - Keep `client.py` and `document.py` free of Django imports (tested on their own).
 - Model changes need a migration in `djangocms_supertext/migrations` committed with the change.
 - `demo/` is the Railway demo (`railway.json` → `demo/Dockerfile`, context = repo root). Demo-only setup is `demo/site_setup/management/commands/demo_setup.py`; it only creates what's missing. Demo secrets live only in Railway variables.

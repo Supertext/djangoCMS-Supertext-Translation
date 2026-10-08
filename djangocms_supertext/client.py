@@ -22,16 +22,37 @@ TESTING = "https://api.testing.supertext.com/v1/"
 #: Stay well below the API's 1,000,000 character limit per document.
 MAX_DOCUMENT_CHARACTERS = 900_000
 
+#: Where administrators create a Supertext account (or log in).
+SIGNUP_URL = "https://www.supertext.com/person/en/account/signin"
+#: Where they generate the API key (supertext.com → Integrations → API; needs the Admin role).
+API_KEY_URL = "https://www.supertext.com/en/integrations/api"
+
 #: Retries after HTTP 429: the API limits requests per second per key.
 RATE_LIMIT_RETRIES = 4
 
 
-class SupertextError(Exception):
-    """Any failure talking to Supertext. The message is safe to show to editors."""
+def gettext_noop(message: str) -> str:
+    """Marks a message for ``makemessages`` without importing Django; the admin translates it."""
+    return message
 
-    def __init__(self, message: str, status: int | None = None):
-        super().__init__(message)
+
+class SupertextError(Exception):
+    """Any failure talking to Supertext. The message is safe to show to editors.
+
+    ``str(error)`` is the English message. ``template`` and ``params`` let the Django layer
+    show it in the user's language (``djangocms_supertext.translator.localized``); ``detail``
+    is the API's own text, which is never translated.
+    """
+
+    def __init__(self, message: str, status: int | None = None, *, params: dict | None = None, detail: str = ""):
+        self.template = message
+        self.params = params or {}
+        self.detail = detail
         self.status = status
+        text = message % self.params if self.params else message
+        if detail:
+            text += f" ({detail})"
+        super().__init__(text)
 
 
 def normalize_key(key: str | None) -> str:
@@ -115,7 +136,7 @@ class SupertextClient:
         files = {"file": ("content.html", html.encode("utf-8"), "text/html")}
         file_id = str(self._request("POST", "translate/ai/file", data=data, files=files).json().get("file_id") or "")
         if not file_id:
-            raise SupertextError("Supertext did not return a file id.")
+            raise SupertextError(gettext_noop("Supertext did not return a file id."))
         return file_id
 
     def _wait_until_done(self, file_id: str) -> None:
@@ -125,13 +146,13 @@ class SupertextClient:
             if status == "done":
                 return
             if status == "error":
-                raise SupertextError("Supertext could not translate the document.")
+                raise SupertextError(gettext_noop("Supertext could not translate the document."))
             if status == "limit_exceeded":
-                raise SupertextError("Your Supertext translation limit is exceeded. Please upgrade your subscription.")
+                raise SupertextError(gettext_noop("Your Supertext translation limit is exceeded. Please upgrade your subscription."))
             if status == "deleted":
-                raise SupertextError("The document was deleted at Supertext before it could be downloaded.")
+                raise SupertextError(gettext_noop("The document was deleted at Supertext before it could be downloaded."))
             if time.monotonic() >= deadline:
-                raise SupertextError("Timed out waiting for the Supertext translation.")
+                raise SupertextError(gettext_noop("Timed out waiting for the Supertext translation."))
             self.sleep(self.poll_interval)
 
     def _download(self, file_id: str) -> str:
@@ -139,18 +160,24 @@ class SupertextClient:
         response.encoding = "utf-8"
         body = response.text
         if not body.strip():
-            raise SupertextError("The translated document was empty.")
+            raise SupertextError(gettext_noop("The translated document was empty."))
         return body
 
     def _request(self, method: str, path: str, **kwargs) -> requests.Response:
         if not self.api_key:
-            raise SupertextError("No Supertext API key is configured.")
+            raise SupertextError(
+                gettext_noop(
+                    "No Supertext API key is configured. No Supertext account yet? Create one at %(signup_url)s. "
+                    "Generate your API key at %(api_key_url)s (supertext.com → Integrations → API, requires the Admin role)."
+                ),
+                params={"signup_url": SIGNUP_URL, "api_key_url": API_KEY_URL},
+            )
         headers = {"Accept": "application/json", "Authorization": f"Supertext-Auth-Key {self.api_key}"}
         for attempt in range(RATE_LIMIT_RETRIES + 1):
             try:
                 response = self.session.request(method, self.base_url + path, headers=headers, timeout=self.request_timeout, **kwargs)
             except requests.RequestException as error:
-                raise SupertextError(f"Could not reach Supertext: {error}") from error
+                raise SupertextError(gettext_noop("Could not reach Supertext: %(error)s"), params={"error": str(error)}) from error
             if response.status_code != 429 or attempt >= RATE_LIMIT_RETRIES:
                 break
             self.sleep(retry_delay(attempt, response.headers.get("Retry-After")))
@@ -158,19 +185,23 @@ class SupertextClient:
         code = response.status_code
         if 200 <= code < 300:
             return response
+        params: dict = {}
         if code in (401, 403):
-            message = "Authentication failed. Please check the Supertext API key."
+            message = gettext_noop(
+                "Authentication failed. Please check the Supertext API key. No Supertext account yet? Create one at %(signup_url)s. "
+                "Generate a new API key at %(api_key_url)s (requires the Admin role)."
+            )
+            params = {"signup_url": SIGNUP_URL, "api_key_url": API_KEY_URL}
         elif code == 404:
-            message = "The requested Supertext resource was not found."
+            message = gettext_noop("The requested Supertext resource was not found.")
         elif code == 413:
-            message = "The content is too large for Supertext to translate in one go."
+            message = gettext_noop("The content is too large for Supertext to translate in one go.")
         elif code == 429:
-            message = "Too many requests to Supertext. Please try again shortly."
+            message = gettext_noop("Too many requests to Supertext. Please try again shortly.")
         elif code >= 500:
-            message = "The Supertext service is currently unavailable."
+            message = gettext_noop("The Supertext service is currently unavailable.")
         else:
-            message = f"Supertext answered with HTTP {code}."
-        detail = re.sub(r"<[^>]*>", "", response.text or "").strip()
-        if detail:
-            message += f" ({detail[:200]})"
-        raise SupertextError(message, code)
+            message = gettext_noop("Supertext answered with HTTP %(code)s.")
+            params = {"code": code}
+        detail = re.sub(r"<[^>]*>", "", response.text or "").strip()[:200]
+        raise SupertextError(message, code, params=params, detail=detail)

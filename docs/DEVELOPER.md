@@ -33,7 +33,7 @@ _apply(): create_page_content() (new language) or update the fields; replace the
 | `admin.py` | Log list, translate dialog, settings page with *Test connection* and the plugin version (read from `djangocms_supertext.__version__`; X.Y.Z links to the GitHub release `vX.Y.Z`) (all as admin views, no URL include needed) |
 | `cms_toolbars.py` | The toolbar entry |
 | `management/commands/` | `supertext_translate <page id> --from en [--to de-ch fr-ch] [--overwrite]`, `supertext_check` |
-| `locale/de/` | German strings |
+| `locale/{de,fr,it}/` | German, French and Italian strings (`django.po` and compiled `django.mo`) |
 
 ### Field rules
 
@@ -156,7 +156,7 @@ On the settings page the script shows the live API address and the public demo's
 
 Releases are published by `.github/workflows/release.yml` when the version is officially bumped; nobody tags or creates releases by hand.
 
-1. Check that if the German messages changed, the `.mo` is recompiled (`python -c "import polib; polib.pofile('djangocms_supertext/locale/de/LC_MESSAGES/django.po').save_as_mofile('djangocms_supertext/locale/de/LC_MESSAGES/django.mo')"`).
+1. Check that if messages changed, each `.mo` is recompiled (`python -c "import polib; polib.pofile('djangocms_supertext/locale/de/LC_MESSAGES/django.po').save_as_mofile('djangocms_supertext/locale/de/LC_MESSAGES/django.mo')"`, same for `fr` and `it`; `tests/test_locale.py` fails otherwise).
 2. Move the *Unreleased* entries in `CHANGELOG.md` under a new `## X.Y.Z — YYYY-MM-DD` section, and keep an empty *Unreleased* above it.
 3. Set the same version in:
    - `djangocms_supertext/__init__.py`: `__version__`, the Python package version
@@ -166,7 +166,7 @@ Publishing to PyPI (`python -m build && twine upload dist/*`) is planned.
 ## Conventions
 
 - Black-compatible formatting, type hints in new code.
-- User-visible strings via Django's gettext, with German in `locale/de`.
+- User-visible strings via Django's gettext, translated in `djangocms_supertext/locale/{de,fr,it}/LC_MESSAGES/django.po` (English is the source). New or changed strings need all four languages in the same commit. `client.py` has no Django imports, so it marks its error messages with a local `gettext_noop` and keeps `template`/`params` on `SupertextError`; `translator.localized()` translates them for the dialog, the settings page and the log. `tests/test_locale.py` checks that every marked string is in each catalog, placeholders match and the `.mo` files are current.
 - Keep `client.py` and `document.py` free of Django imports.
 - Keep the three docs in `docs/` current with every change (see `CLAUDE.md`).
 

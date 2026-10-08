@@ -129,6 +129,10 @@ SUPERTEXT = {
 
 **Plugins translated out of the box:** `TextPlugin` (`body`, HTML; djangocms-text and djangocms-text-ckeditor), `LinkPlugin` (`name`; djangocms-link), `PicturePlugin` (`caption_text`), `FilePlugin` (`file_name`), `VideoPlayerPlugin` (`label`). Add your own plugins with `PLUGIN_FIELDS`; all other plugins are copied into the new language unchanged.
 
+## Interface languages
+
+The *Translate with Supertext* dialog, the settings page, the translation log and all Supertext messages are available in English, German, French and Italian. They follow each user's django CMS interface language: *site name menu → User settings → Language* in the toolbar, otherwise the browser's language through Django's `LocaleMiddleware`. A language is only offered if it is in your `LANGUAGES` setting; other languages fall back to English. The `manage.py` commands print English, and the permission name stays English too (Django stores permission names in the database when it migrates).
+
 ## Request timeouts
 
 Translating runs in the editor's request: a few seconds per language, up to `TIMEOUT` for very long pages. Make sure your web server and proxy allow that (e.g. gunicorn `--timeout 300`).
