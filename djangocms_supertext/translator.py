@@ -92,6 +92,18 @@ def describe(page) -> list[dict]:
     ]
 
 
+def localized(error: SupertextError) -> str:
+    """The error's message in the current admin language (the API's own detail stays as sent)."""
+    template = getattr(error, "template", None)
+    if not template:
+        return str(error)
+    params = getattr(error, "params", None) or {}
+    text = _(template) % params if params else _(template)
+    if getattr(error, "detail", ""):
+        text += f" ({error.detail})"
+    return text
+
+
 def translate_page(page, source_language: str, targets: list[str], overwrite: bool = False, user=None,
                    options: conf.Options | None = None, client: SupertextClient | None = None) -> list[Result]:
     from .models import Translation
@@ -120,7 +132,7 @@ def translate_page(page, source_language: str, targets: list[str], overwrite: bo
                 created = _apply(page, source, translated, target, existing, user)
             results.append(Result(target, Translation.STATUS_TRANSLATED, created=created))
         except SupertextError as error:
-            results.append(Result(target, Translation.STATUS_ERROR, str(error)))
+            results.append(Result(target, Translation.STATUS_ERROR, localized(error)))
         except Exception as error:  # noqa: BLE001 - shown per language, logged with traceback
             logger.exception("Supertext translation of page %s into %s failed", page.pk, target)
             results.append(Result(target, Translation.STATUS_ERROR, str(error) or error.__class__.__name__))

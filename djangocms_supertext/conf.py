@@ -16,11 +16,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-from .client import SupertextClient, base_url_for, normalize_key
+from .client import API_KEY_URL, SIGNUP_URL, SupertextClient, base_url_for, normalize_key  # noqa: F401 (URLs re-exported)
 
-#: Where administrators create a Supertext account (or log in) and generate the API key.
-SIGNUP_URL = "https://www.supertext.com/person/en/account/signin"
-API_KEY_URL = "https://www.supertext.com/en/integrations/api"
 
 #: Plugin fields translated out of the box: plugin type -> {model field: "text" | "html"}.
 DEFAULT_PLUGIN_FIELDS: dict[str, dict[str, str]] = {
