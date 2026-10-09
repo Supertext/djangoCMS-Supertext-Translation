@@ -1,0 +1,225 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: djangocms-supertext-translation\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "API"
+msgstr "API"
+
+msgid "API key"
+msgstr "Chiave API"
+
+msgid "Already translated"
+msgstr "Già tradotta"
+
+msgid "Already translated."
+msgstr "Già tradotta."
+
+msgid "Can translate pages with Supertext"
+msgstr "Può tradurre pagine con Supertext"
+
+msgid "Checks the API key against the Supertext API. Nothing is translated or charged."
+msgstr "Verifica la chiave API presso l’API Supertext. Non viene tradotto né addebitato nulla."
+
+msgid "Connected. The API key works."
+msgstr "Connesso. La chiave API funziona."
+
+msgid "Connection"
+msgstr "Connessione"
+
+msgid "Default"
+msgstr "Predefinito"
+
+msgid "Form of address"
+msgstr "Forma di cortesia"
+
+msgid "Formal (Sie, vous)"
+msgstr "Formale (Sie, vous)"
+
+msgid "From"
+msgstr "Da"
+
+msgid "Informal (du, tu)"
+msgstr "Informale (du, tu)"
+
+msgid "Into"
+msgstr "In"
+
+msgid "Language"
+msgstr "Lingua"
+
+msgid "Languages"
+msgstr "Lingue"
+
+msgid "Languages that already exist are replaced by a new translation of the source: the page fields and all plugins. Changes made in those languages are lost. Leave this off to translate only the missing languages."
+msgstr "Le lingue già esistenti vengono sostituite da una nuova traduzione dell’originale: i campi della pagina e tutti i plugin. Le modifiche apportate in queste lingue vanno perse. Lasci l’opzione disattivata per tradurre solo le lingue mancanti."
+
+msgid "Missing: set SUPERTEXT_API_KEY"
+msgstr "Mancante: imposti SUPERTEXT_API_KEY"
+
+msgid "No Supertext API key is configured. Set SUPERTEXT_API_KEY."
+msgstr "Nessuna chiave API Supertext configurata. Imposti SUPERTEXT_API_KEY."
+
+msgid "Open"
+msgstr "Apri"
+
+msgid "Open a language to review it, or close this dialog and reload the page."
+msgstr "Apra una lingua per rivederla, oppure chiuda questa finestra e ricarichi la pagina."
+
+msgid "Overwrite existing translations"
+msgstr "Sovrascrivi le traduzioni esistenti"
+
+msgid "Page"
+msgstr "Pagina"
+
+msgid "Set (SUPERTEXT setting)"
+msgstr "Impostata (impostazione SUPERTEXT)"
+
+msgid "Set (environment variable SUPERTEXT_API_KEY)"
+msgstr "Impostata (variabile d’ambiente SUPERTEXT_API_KEY)"
+
+msgid "Settings"
+msgstr "Impostazioni"
+
+msgid "Settings and connection"
+msgstr "Impostazioni e connessione"
+
+msgid "Supertext"
+msgstr "Supertext"
+
+msgid "Supertext is not set up yet: an administrator needs to set SUPERTEXT_API_KEY."
+msgstr "Supertext non è ancora configurato: un amministratore deve impostare SUPERTEXT_API_KEY."
+
+msgid "Supertext language"
+msgstr "Lingua Supertext"
+
+msgid "Supertext settings"
+msgstr "Impostazioni Supertext"
+
+msgid "Supertext translates the saved content of the source language. Each language takes a few seconds."
+msgstr "Supertext traduce il contenuto salvato della lingua di origine. Ogni lingua richiede qualche secondo."
+
+msgid "Supertext translation"
+msgstr "Traduzione Supertext"
+
+msgid "Supertext translations"
+msgstr "Traduzioni Supertext"
+
+msgid "Test connection"
+msgstr "Verifica connessione"
+
+msgid "The django CMS languages of each site, with the Supertext language and form of address they are translated with. Change them in the SUPERTEXT setting (LANGUAGES)."
+msgstr "Le lingue django CMS di ogni sito, con la lingua Supertext e la forma di cortesia usate per la traduzione. Le modifichi nell’impostazione SUPERTEXT (LANGUAGES)."
+
+msgid "The page has no %(language)s version to translate from."
+msgstr "La pagina non ha una versione %(language)s da cui tradurre."
+
+msgid "This language is published. Create a draft of it, then translate again."
+msgstr "Questa lingua è pubblicata. Ne crei una bozza, poi traduca di nuovo."
+
+msgid "Timeout per language"
+msgstr "Timeout per lingua"
+
+msgid "Plugin version"
+msgstr "Versione del plugin"
+
+msgid "Translate"
+msgstr "Traduci"
+
+msgid "Translate with Supertext"
+msgstr "Traduci con Supertext"
+
+msgid "Translated with Supertext on %(date)s"
+msgstr "Tradotta con Supertext il %(date)s"
+
+msgid "Translating…"
+msgstr "Traduzione in corso…"
+
+msgid "already translated, skipped"
+msgstr "già tradotta, saltata"
+
+msgid "date"
+msgstr "data"
+
+msgid "error"
+msgstr "errore"
+
+msgid "from"
+msgstr "da"
+
+msgid "into"
+msgstr "in"
+
+msgid "message"
+msgstr "messaggio"
+
+msgid "page"
+msgstr "pagina"
+
+msgid "skipped"
+msgstr "saltata"
+
+msgid "status"
+msgstr "stato"
+
+msgid "translated"
+msgstr "tradotta"
+
+msgid "translation created"
+msgstr "traduzione creata"
+
+msgid "translation replaced"
+msgstr "traduzione sostituita"
+
+msgid "user"
+msgstr "utente"
+
+msgid "No Supertext account yet? <a href=\"%(signup_url)s\" target=\"_blank\" rel=\"noopener\">Create one at supertext.com</a>. Generate your API key at <a href=\"%(api_key_url)s\" target=\"_blank\" rel=\"noopener\">supertext.com → Integrations → API</a> (requires the Admin role)."
+msgstr "Non ha ancora un account Supertext? <a href=\"%(signup_url)s\" target=\"_blank\" rel=\"noopener\">Ne crei uno su supertext.com</a>. Generi la Sua chiave API su <a href=\"%(api_key_url)s\" target=\"_blank\" rel=\"noopener\">supertext.com → Integrations → API</a> (richiede il ruolo Admin)."
+
+msgid "Supertext did not return a file id."
+msgstr "Supertext non ha restituito un ID file."
+
+msgid "Supertext could not translate the document."
+msgstr "Supertext non è riuscito a tradurre il documento."
+
+msgid "Your Supertext translation limit is exceeded. Please upgrade your subscription."
+msgstr "Il Suo limite di traduzione Supertext è stato superato. La preghiamo di aggiornare il Suo abbonamento."
+
+msgid "The document was deleted at Supertext before it could be downloaded."
+msgstr "Il documento è stato eliminato da Supertext prima che potesse essere scaricato."
+
+msgid "Timed out waiting for the Supertext translation."
+msgstr "Tempo scaduto in attesa della traduzione Supertext."
+
+msgid "The translated document was empty."
+msgstr "Il documento tradotto era vuoto."
+
+msgid "No Supertext API key is configured. No Supertext account yet? Create one at %(signup_url)s. Generate your API key at %(api_key_url)s (supertext.com → Integrations → API, requires the Admin role)."
+msgstr "Nessuna chiave API Supertext configurata. Non ha ancora un account Supertext? Ne crei uno su %(signup_url)s. Generi la Sua chiave API su %(api_key_url)s (supertext.com → Integrations → API, richiede il ruolo Admin)."
+
+msgid "Could not reach Supertext: %(error)s"
+msgstr "Impossibile raggiungere Supertext: %(error)s"
+
+msgid "Authentication failed. Please check the Supertext API key. No Supertext account yet? Create one at %(signup_url)s. Generate a new API key at %(api_key_url)s (requires the Admin role)."
+msgstr "Autenticazione non riuscita. Verifichi la chiave API Supertext. Non ha ancora un account Supertext? Ne crei uno su %(signup_url)s. Generi una nuova chiave API su %(api_key_url)s (richiede il ruolo Admin)."
+
+msgid "The requested Supertext resource was not found."
+msgstr "La risorsa Supertext richiesta non è stata trovata."
+
+msgid "The content is too large for Supertext to translate in one go."
+msgstr "Il contenuto è troppo grande per essere tradotto da Supertext in una sola volta."
+
+msgid "Too many requests to Supertext. Please try again shortly."
+msgstr "Troppe richieste a Supertext. Riprovi tra poco."
+
+msgid "The Supertext service is currently unavailable."
+msgstr "Il servizio Supertext non è al momento disponibile."
+
+msgid "Supertext answered with HTTP %(code)s."
+msgstr "Supertext ha risposto con HTTP %(code)s."

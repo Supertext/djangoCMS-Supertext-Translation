@@ -61,6 +61,8 @@ Empty fields are skipped.
 
 ## Messages
 
+The Supertext dialog and its messages follow your django CMS interface language (English, German, French or Italian; *site name menu → User settings* in the toolbar).
+
 | Message | Meaning |
 | --- | --- |
 | *Supertext is not set up yet: …* | No API key on the server. Ask your administrator; the message links to where they create a Supertext account and the API key. |

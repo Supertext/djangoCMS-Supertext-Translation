@@ -22,6 +22,7 @@ from django.utils.translation import gettext_lazy
 
 from . import __version__, conf, translator
 from .client import SupertextError
+from .translator import localized
 from .models import Translation
 
 PERMISSION = "djangocms_supertext.translate"
@@ -108,7 +109,7 @@ class TranslationAdmin(admin.ModelAdmin):
                     options=options,
                 )
             except SupertextError as error:
-                form.add_error(None, str(error))
+                form.add_error(None, localized(error))
             else:
                 # Start over with the new state: nothing ticked that is translated now.
                 languages = translator.describe(page)
@@ -150,7 +151,7 @@ class TranslationAdmin(admin.ModelAdmin):
                 options.client().validate_api_key()
                 messages.success(request, _("Connected. The API key works."))
             except SupertextError as error:
-                messages.error(request, str(error))
+                messages.error(request, localized(error))
 
         sites = []
         for site in Site.objects.order_by("pk"):
