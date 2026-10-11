@@ -27,3 +27,21 @@ def test_language_codes_and_settings(monkeypatch):
     assert options.target_code("fr") == "fr-CH" and options.politeness("fr") == "less"
     assert options.plugin_fields["HeroPlugin"] == {"heading": "text"}
     assert options.plugin_fields["TextPlugin"] == {"body": "html"}
+
+
+def test_supertext_language_codes():
+    options = conf.load({"LANGUAGES": {"de": {"code": "de_ch"}}})
+    # Target: regional code; bare codes get a default region.
+    assert options.target_code("fr") == "fr-FR"
+    assert options.target_code("en") == "en-US"
+    assert options.target_code("fr_ch") == "fr-CH"
+    assert options.target_code("pt-br") == "pt-BR"
+    assert options.target_code("zh-hant") == "zh-Hant"
+    assert options.target_code("es-419") == "es-419"
+    assert options.target_code("xx") == "xx"  # unknown: sent unchanged
+    # The override wins (normalized).
+    assert options.target_code("de") == "de-CH"
+    # Source: bare language, from the override if there is one.
+    assert options.source_code("en") == "en"
+    assert options.source_code("en-gb") == "en"
+    assert options.source_code("de") == "de"

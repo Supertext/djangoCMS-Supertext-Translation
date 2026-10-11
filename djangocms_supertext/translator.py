@@ -181,7 +181,7 @@ def _translate(client: SupertextClient, units: list[_Unit], source: str, target:
         html = client.translate_document(
             document.build(part),
             target_language=options.target_code(target),
-            source_language=options.target_code(source),
+            source_language=options.source_code(source),
             politeness=options.politeness(target),
         )
         for position, value in document.parse(html, part).items():

@@ -45,9 +45,13 @@ class Options:
         return base_url_for(self.environment, self.api_url)
 
     def target_code(self, language_code: str) -> str:
-        """Supertext code for a django CMS language: the LANGUAGES override, else BCP-47 (de-ch -> de-CH)."""
+        """Supertext target for a django CMS language: the LANGUAGES override, else the code with a region (fr -> fr-FR, de-ch -> de-CH)."""
         override = (self.language(language_code).get("code") or "").strip()
-        return override or bcp47(language_code)
+        return regional(override or language_code)
+
+    def source_code(self, language_code: str) -> str:
+        """Supertext source for a django CMS language: the bare language of its target code (en-us -> en)."""
+        return bare(self.target_code(language_code))
 
     def politeness(self, language_code: str) -> str:
         value = self.language(language_code).get("politeness") or "default"
@@ -70,6 +74,29 @@ def bcp47(language_code: str) -> str:
     for part in parts[1:]:
         out.append(part.upper() if len(part) == 2 else part.capitalize())
     return "-".join(out)
+
+
+# The region Supertext uses when a language code has none. Supertext rejects bare
+# targets such as "de" (INVALID_LANGUAGE_PAIR); the source is sent without region.
+DEFAULT_REGION = {
+    "ar": "ar-SA", "bg": "bg-BG", "cs": "cs-CZ", "da": "da-DK", "de": "de-DE", "el": "el-GR",
+    "en": "en-US", "es": "es-ES", "et": "et-EE", "fi": "fi-FI", "fr": "fr-FR", "hr": "hr-HR",
+    "hu": "hu-HU", "it": "it-IT", "ja": "ja-JP", "ko": "ko-KR", "lt": "lt-LT", "lv": "lv-LV",
+    "nb": "nb-NO", "nl": "nl-NL", "pl": "pl-PL", "pt": "pt-PT", "ro": "ro-RO", "ru": "ru-RU",
+    "sk": "sk-SK", "sl": "sl-SI", "sr": "sr-RS", "sv": "sv-SE", "th": "th-TH", "tr": "tr-TR",
+    "uk": "uk-UA", "vi": "vi-VN", "zh": "zh-CN",
+}
+
+
+def regional(language_code: str) -> str:
+    """Target code: de -> de-DE, de_ch -> de-CH, zh-hant -> zh-Hant; unknown bare codes unchanged."""
+    code = bcp47(language_code.strip())
+    return code if "-" in code else DEFAULT_REGION.get(code, code)
+
+
+def bare(language_code: str) -> str:
+    """Source code: the language without region (en-US -> en)."""
+    return bcp47(language_code.strip()).split("-")[0]
 
 
 def load(options: dict | None = None) -> Options:

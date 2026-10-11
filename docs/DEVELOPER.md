@@ -62,6 +62,16 @@ Auth header: `Authorization: Supertext-Auth-Key <key>`. The header name must be 
 
 **Rate limit:** the API limits requests per second per key (HTTP 429). The client retries a 429 up to 4 times, waiting for `Retry-After` if sent, otherwise 1, 2, 4 and 8 seconds plus jitter. Languages are translated one after the other.
 
+## Language codes
+
+Supertext wants the **source** as a bare language (`en`) and the **target** as a regional code (`de-DE`, `fr-CH`, `en-US`); a bare target such as `de` is rejected with `INVALID_LANGUAGE_PAIR`. `conf.py` turns django CMS language codes into Supertext codes:
+
+- **Target** (`Options.target_code`): the `LANGUAGES` → `code` override if set, else the django CMS code. It is normalized (`de_ch`/`de-ch` → `de-CH`, `zh-hant` → `zh-Hant`, `es-419` stays); a code without region gets a default region (`regional()`): ar-SA, bg-BG, cs-CZ, da-DK, de-DE, el-GR, en-US, es-ES, et-EE, fi-FI, fr-FR, hr-HR, hu-HU, it-IT, ja-JP, ko-KR, lt-LT, lv-LV, nb-NO, nl-NL, pl-PL, pt-PT, ro-RO, ru-RU, sk-SK, sl-SI, sr-RS, sv-SE, th-TH, tr-TR, uk-UA, vi-VN, zh-CN (the same table as the Shopify app). Unknown bare codes are sent unchanged, so Supertext's error names them.
+- **Source** (`Options.source_code`): the bare language of the source's target code (`en-us` → `en`; an override's language wins). The client also strips any region before sending.
+- Translating within one language (`en` → `en-GB`) is allowed.
+
+`tests/fake.py` and `tests/docs/stand-in.mjs` reject targets without region like the live API, so a regression fails the tests.
+
 ## Local development
 
 ```bash

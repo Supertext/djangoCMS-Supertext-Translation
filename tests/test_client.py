@@ -52,13 +52,13 @@ def test_retry_after():
 
 def test_authentication_error():
     with pytest.raises(SupertextError, match="Authentication failed.*bad key"):
-        client(FakeSession(), "wrong").translate_document("<p>x</p>", "fr")
+        client(FakeSession(), "wrong").translate_document("<p>x</p>", "fr-FR")
 
 
 def test_limit_exceeded_cleans_up():
     session = FakeSession(statuses=["limit_exceeded"])
     with pytest.raises(SupertextError, match="limit is exceeded"):
-        client(session).translate_document("<p>x</p>", "fr")
+        client(session).translate_document("<p>x</p>", "fr-FR")
     assert session.calls[-1]["method"] == "DELETE"
 
 

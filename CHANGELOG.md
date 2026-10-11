@@ -9,6 +9,10 @@ All notable changes to this project are documented here. The format follows [Kee
 - French and Italian interface (and German where it was missing): the dialog, settings page, log and all Supertext error messages follow the user's interface language.
 - The settings page shows the installed plugin version, linked to its release notes on GitHub.
 
+### Fixed
+
+- Languages without a region (e.g. `de`, `fr`) are now sent to Supertext as `de-DE`, `fr-FR` (Supertext rejects targets without region).
+
 ### Changed
 
 - The "No Supertext API key" and "Authentication failed" messages from the API client now link to account signup and API key generation.

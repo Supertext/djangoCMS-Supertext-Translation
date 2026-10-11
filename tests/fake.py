@@ -27,6 +27,9 @@ class FakeSession(requests.Session):
             return response(429, '{"error_code":"RATE_LIMIT_EXCEEDED"}')
         path = url.split("/v1/", 1)[1]
         if method == "POST" and path == "translate/ai/file":
+            if not re.match(r"^[a-z]{2,3}-([A-Z]{2}|[A-Z][a-z]{3}|\d{3})$", data.get("target_lang", "")):
+                # Like the live API: a target without region (e.g. "de") is not a valid pair.
+                return response(400, json.dumps({"error_code": "INVALID_LANGUAGE_PAIR", "source_lang": data.get("source_lang"), "target_lang": data.get("target_lang")}))
             name, content, content_type = files["file"]
             file_id = f"f{len(self.files) + 1}"
             self.files[file_id] = {"html": content.decode(), "target": data["target_lang"], "type": content_type, "polls": 0}

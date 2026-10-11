@@ -83,7 +83,7 @@ LANGUAGES = [
 ]
 ```
 
-Each language code is sent to Supertext in BCP-47 form (`de-ch` → `de-CH`). Use regional codes where they matter (`de-CH` writes "ss" instead of "ß"). The editors see the languages in the toolbar's *Language* menu:
+Each language code is sent to Supertext in BCP-47 form (`de-ch` → `de-CH`). Supertext needs a region for the target language, so a code without one gets a default region: `de` → `de-DE`, `fr` → `fr-FR`, `it` → `it-IT`, `en` → `en-US` (and so on for other languages). The source language is sent without region (`en-gb` → `en`). Use regional codes where they matter (`de-CH` writes "ss" instead of "ß"), or set `code` under `SUPERTEXT["LANGUAGES"]` (below). The settings page lists the code each language is sent with. The editors see the languages in the toolbar's *Language* menu:
 
 ![The django CMS toolbar in edit mode with the Language menu open: English, Add Translation, Delete Translation and "Translate with Supertext…"](images/01-language-menu.png)
 
@@ -122,7 +122,7 @@ SUPERTEXT = {
 | `API_KEY` | – | Supertext API key; the environment variable `SUPERTEXT_API_KEY` takes precedence. |
 | `ENVIRONMENT` | `live` | `live` (`https://api.supertext.com/v1/`), `staging` or `testing`. |
 | `API_URL` | – | A different base URL (proxy, test server); `SUPERTEXT_API_URL` takes precedence. |
-| `LANGUAGES` | `{}` | Per language: `code` (the Supertext language, default: the BCP-47 form of the django CMS code) and `politeness` (`more` formal, `less` informal, `default`). |
+| `LANGUAGES` | `{}` | Per language: `code` (the Supertext language with region, e.g. `de-CH`; it wins over the default, and as source its language without region is sent; default: the BCP-47 form of the django CMS code, with a default region if it has none) and `politeness` (`more` formal, `less` informal, `default`). |
 | `TIMEOUT` | `180` | Seconds to wait for the translation of one language. |
 | `POLL_INTERVAL` | `2` | Seconds between status checks. |
 | `PLUGIN_FIELDS` | see below | Plugin type → `{model field: "text" or "html"}`. |
