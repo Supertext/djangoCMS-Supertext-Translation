@@ -5,6 +5,7 @@ toolbar) and the Supertext settings page with "Test connection".
     /admin/djangocms_supertext/translation/                    list (view permission)
     /admin/djangocms_supertext/translation/page/<page_id>/     translate dialog
     /admin/djangocms_supertext/translation/settings/           settings and Test connection (superusers)
+    /admin/djangocms_supertext/translation/ping/               public: the Commando Center's ping (views.ping)
 """
 
 from __future__ import annotations
@@ -17,10 +18,11 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
+from django.utils.dateparse import parse_datetime
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
-from . import __version__, conf, translator
+from . import __version__, conf, reporting, translator, views
 from .client import SupertextError
 from .translator import localized
 from .models import Translation
@@ -80,6 +82,8 @@ class TranslationAdmin(admin.ModelAdmin):
         return [
             path("page/<int:page_id>/", self.admin_site.admin_view(self.translate_view), name="djangocms_supertext_translate"),
             path("settings/", self.admin_site.admin_view(self.settings_view), name="djangocms_supertext_settings"),
+            # Public on purpose (no admin_view): only echoes the Commando Center's challenge.
+            path("ping/", views.ping, name="djangocms_supertext_ping"),
         ] + super().get_urls()
 
     # -- translate dialog ---------------------------------------------------------------------
@@ -97,6 +101,7 @@ class TranslationAdmin(admin.ModelAdmin):
         source = request.GET.get("language") or request.POST.get("source") or next((lang["code"] for lang in languages if lang["exists"]), "")
         form = TranslateForm(request.POST or None, languages=languages, source=source)
         results = None
+        translated = False
 
         if request.method == "POST" and form.is_valid():
             try:
@@ -111,6 +116,7 @@ class TranslationAdmin(admin.ModelAdmin):
             except SupertextError as error:
                 form.add_error(None, localized(error))
             else:
+                translated = True
                 # Start over with the new state: nothing ticked that is translated now.
                 languages = translator.describe(page)
                 source = form.cleaned_data["source"]
@@ -133,7 +139,10 @@ class TranslationAdmin(admin.ModelAdmin):
             ],
             "is_popup": True,
         }
-        return TemplateResponse(request, "djangocms_supertext/translate.html", context)
+        response = TemplateResponse(request, "djangocms_supertext/translate.html", context)
+        # Version report and key check after the response (an upgrade, a changed key, a rejected key).
+        reporting.report_translation(results if translated else [], options, request, response)
+        return response
 
     # -- settings ------------------------------------------------------------------------------
 
@@ -144,25 +153,20 @@ class TranslationAdmin(admin.ModelAdmin):
         from django.contrib.sites.models import Site
 
         options = conf.load()
+        tested = None
         if request.method == "POST":
-            try:
-                if not options.api_key:
-                    raise SupertextError(_("No Supertext API key is configured. Set SUPERTEXT_API_KEY."))
-                options.client().validate_api_key()
-                messages.success(request, _("Connected. The API key works."))
-            except SupertextError as error:
-                messages.error(request, localized(error))
+            # Test connection: the SDK's key check (ok, invalid, missing, unreachable, error), stored and reported.
+            result = reporting.run("test_connection", options, request)
+            tested = result.check if result else options.client().check_api_key()
+            (messages.success if tested.status == "ok" else messages.error)(request, reporting.check_html(tested))
 
         sites = []
         for site in Site.objects.order_by("pk"):
             sites.append({
                 "site": site,
-                "languages": [
-                    {"code": lang["code"], "name": lang.get("name", lang["code"]), "target": options.target_code(lang["code"]),
-                     "politeness": options.politeness(lang["code"])}
-                    for lang in get_languages(site.pk)
-                ],
+                "languages": [_language_row(options, lang) for lang in get_languages(site.pk)],
             })
+        check = tested or reporting.last_check()
         context = {
             **self.admin_site.each_context(request),
             "title": _("Supertext settings"),
@@ -172,8 +176,33 @@ class TranslationAdmin(admin.ModelAdmin):
             "api_key_url": conf.API_KEY_URL,
             "opts": self.model._meta,
             "version": plugin_version(),
+            "check": check,
+            "check_html": reporting.check_html(check) if check else "",
+            "checked_at": parse_datetime(check.checked_at) if check else None,
+            "reports_enabled": options.reports_enabled,
+            "reports_from_environment": options.reports_from_environment,
+            "ping_url": (reporting.site_url(options, request) or "") + reporting.ping_path(),
+            "supertext_targets": conf.Languages.TARGETS,
         }
-        return TemplateResponse(request, "djangocms_supertext/settings.html", context)
+        response = TemplateResponse(request, "djangocms_supertext/settings.html", context)
+        if request.method != "POST":
+            response_task = lambda: reporting.run("on_request", options, request)  # noqa: E731
+            reporting.after_response(response, response_task)
+        return response
+
+
+def _language_row(options: conf.Options, lang: dict) -> dict:
+    code = lang["code"]
+    target = options.target_code_or_none(code)
+    politeness = options.politeness(code)
+    return {
+        "code": code,
+        "name": lang.get("name", code),
+        "target": target,
+        "mapped": bool(options.mapping_for(code)),
+        "politeness": politeness,
+        "politeness_unsupported": politeness != "default" and target is not None and conf.Languages.supports_politeness(target) is False,
+    }
 
 
 def _edit_url(page, language: str) -> str:

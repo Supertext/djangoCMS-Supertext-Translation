@@ -35,6 +35,8 @@ class Result:
     status: str  # translated | skipped | error
     message: str = ""
     created: bool = False
+    code: str = ""  # the SDK's error code for errors (e.g. authentication_failure, unsupported_language)
+    http_status: int | None = None
 
 
 @dataclass
@@ -131,7 +133,7 @@ def translate_page(page, source_language: str, targets: list[str], overwrite: bo
                 created = _apply(page, source, translated, target, existing, user)
             results.append(Result(target, Translation.STATUS_TRANSLATED, created=created))
         except SupertextError as error:
-            results.append(Result(target, Translation.STATUS_ERROR, localized(error)))
+            results.append(Result(target, Translation.STATUS_ERROR, localized(error), code=error.code, http_status=error.status))
         except Exception as error:  # noqa: BLE001 - shown per language, logged with traceback
             logger.exception("Supertext translation of page %s into %s failed", page.pk, target)
             results.append(Result(target, Translation.STATUS_ERROR, str(error) or error.__class__.__name__))

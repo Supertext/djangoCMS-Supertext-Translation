@@ -19,6 +19,17 @@ const samples = Object.fromEntries(
   ]),
 )
 const files = new Map()
+// Exactly the target codes the live API accepts (the SDK's Languages.TARGETS, GET features, October 2026);
+// false: no formal/informal for that target.
+const TARGETS = {
+  bg: true, cs: true, da: true, 'de-AT': true, 'de-CH': true, 'de-DE': true, el: true, 'en-GB': false, 'en-US': false,
+  es: true, fi: true, 'fr-CH': true, 'fr-FR': true, 'gsw-u-sd-chbe': false, 'gsw-u-sd-chzh': false, hr: true, hu: true,
+  'it-CH': true, 'it-IT': true, ja: true, ko: true, nb: true, nl: true, pl: true, 'pt-BR': true, 'pt-PT': true, rm: false,
+  ru: true, sk: true, sl: true, sq: false, 'sr-Cyrl': false, 'sr-Latn': false, sv: true, tr: true, 'zh-Hans': true, 'zh-Hant': true,
+}
+// Stands in for the Commando Center too (SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report), so the demo and
+// the screenshots never report to the live center; GET /reports lists what was received (CI checks it).
+const reports = []
 
 http
   .createServer(async (req, res) => {
@@ -27,6 +38,13 @@ http
       res.writeHead(status, { 'Content-Type': type })
       res.end(type === 'application/json' ? JSON.stringify(body) : body)
     }
+    if (req.method === 'POST' && path === '/report') {
+      const chunks = []
+      for await (const chunk of req) chunks.push(chunk)
+      reports.push(JSON.parse(Buffer.concat(chunks).toString('utf8')))
+      return send(202, { ok: true })
+    }
+    if (req.method === 'GET' && path === '/reports') return send(200, reports)
     if (!/^Supertext-Auth-Key \S+$/.test(req.headers.authorization || '')) return send(401, { detail: 'missing key' })
     if (path === '/features') return send(200, {})
     if (req.method === 'POST') {
@@ -36,9 +54,12 @@ http
       const file = form.get('file')
       if (!file || file.type !== 'text/html') return send(415, { detail: 'FILETYPE_NOT_ALLOWED' })
       const target = String(form.get('target_lang'))
-      // Like the live API: a target without region (e.g. "de") is not a valid pair.
-      if (!/^[a-z]{2,3}-([A-Z]{2}|[A-Z][a-z]{3}|\d{3})$/.test(target)) {
-        return send(400, { error_code: 'INVALID_LANGUAGE_PAIR', source_lang: form.get('source_lang'), target_lang: target })
+      // Like the live API: only its exact codes ("de" or "es-ES" are not valid pairs: HTTP 404).
+      if (!(target in TARGETS)) {
+        return send(404, { error_code: 'INVALID_LANGUAGE_PAIR', source_lang: form.get('source_lang'), target_lang: target })
+      }
+      if (form.get('politeness') && !TARGETS[target]) {
+        return send(400, { error_code: 'FEATURE_ERROR', source_lang: form.get('source_lang'), target_lang: target })
       }
       const id = randomBytes(6).toString('hex')
       files.set(id, { html: await file.text(), target })

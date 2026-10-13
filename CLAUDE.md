@@ -77,7 +77,9 @@ The user guide and installation guide of every plugin include screenshots of the
 
 AI file translation API v1, same as the WordPress plugin: POST HTML file → poll status → GET translation → DELETE. Details in `docs/DEVELOPER.md`. Never commit API keys; use the `SUPERTEXT_API_KEY` environment variable or `SUPERTEXT["API_KEY"]`.
 
-Lessons from the live API, apply them here: header `Authorization: Supertext-Auth-Key <key>` (strip a pasted prefix), retry HTTP 429 (per-second rate limit), keep a whole text in one `data-st-id` element (each one is translated on its own), and send the source as a bare language (`en`) but the target as a regional code (`de-DE`, `en-US`): Supertext rejects bare targets (`INVALID_LANGUAGE_PAIR`), so bare CMS locales get a regional default (see `docs/DEVELOPER.md` → *Language codes*).
+Lessons from the live API, apply them here: header `Authorization: Supertext-Auth-Key <key>` (strip a pasted prefix), retry HTTP 429 (per-second rate limit), keep a whole text in one `data-st-id` element (each one is translated on its own), and use only the codes Supertext's `GET features` lists (the SDK's `Languages`, `_vendor.supertext.v1`): bare sources (`en`); targets regional only for de/en/fr/it/pt (`de-CH`, `en-US`), `zh-Hans`/`zh-Hant`, `sr-Latn`/`sr-Cyrl`, `gsw-u-sd-chzh`/`chbe`, bare for the rest (`es`, `nl`, `sl`). **No guessing:** the plugin's mapping (`code` under `SUPERTEXT["LANGUAGES"]`), else an exact match, else the error `unsupported_language`. No default regions (see `docs/DEVELOPER.md` → *Language codes*).
+
+Commando Center (version reports, API key check, ping): `djangocms_supertext/reporting.py` on top of the SDK's `InstallationReporter`; never reimplement the protocol, never let it break a page or a translation (see `docs/DEVELOPER.md` → *Commando Center*).
 
 ## This repo
 

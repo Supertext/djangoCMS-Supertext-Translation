@@ -91,10 +91,11 @@ async function openDialog(page) {
   await page.evaluate(({ live, site }) => {
     document.querySelectorAll('[data-supertext-endpoint]').forEach((c) => { c.textContent = live })
     document.querySelectorAll('[data-supertext-domain]').forEach((c) => { c.textContent = site })
+    document.querySelectorAll('[data-supertext-ping]').forEach((c) => { c.textContent = c.textContent.replace(/^https?:\/\/[^/]+/, 'https://' + site) })
   }, { live: LIVE_API, site: SITE_DOMAIN })
   const main = await page.locator('#content-main').boundingBox()
   const messages = await page.locator('.messagelist').boundingBox()
-  await page.screenshot({ path: OUT + '06-settings.png', clip: { x: main.x - 20, y: messages.y - 10, width: 800, height: main.y + main.height - messages.y + 30 } })
+  await page.screenshot({ path: OUT + '06-settings.png', fullPage: true, clip: { x: main.x - 20, y: messages.y - 10, width: 800, height: main.y + main.height - messages.y + 30 } })
 
   await go(page, '/en/admin/djangocms_supertext/translation/')
   await page.screenshot({ path: OUT + '07-translations-log.png', clip: { x: 0, y: 0, width: 1280, height: 460 } })

@@ -10,7 +10,7 @@ def client(session, key="test-key"):
 
 def test_full_protocol():
     session = FakeSession(statuses=["running", "done"])
-    html = client(session).translate_document('<div data-st-id="0">Hello</div>', "de-CH", "en-GB", "more")
+    html = client(session).translate_document('<div data-st-id="0">Hello</div>', "de-CH", "en", "more")
     assert "[de-CH] Hello" in html
     assert [(c["method"], c["url"].split("/v1/")[1]) for c in session.calls] == [
         ("POST", "translate/ai/file"),
@@ -48,18 +48,32 @@ def test_gives_up_after_four_retries():
 def test_segments_in_one_document():
     session = FakeSession()
     out = client(session).translate_segments(
-        [Segment("Hello <b>world</b>", html=True), Segment("Fish & chips\nto go"), Segment("  ")], "de", "en"
+        [Segment("Hello <b>world</b>", html=True), Segment("Fish & chips\nto go"), Segment("  ")], "de-DE", "en"
     )
     assert out == {0: "[de-DE] Hello <b>[de-DE] world</b>", 1: "[de-DE] Fish & chips\n[de-DE] to go"}  # blank: not sent
-    assert session.calls[0]["data"]["target_lang"] == "de-DE"  # bare target gets its region
+    assert session.calls[0]["data"]["target_lang"] == "de-DE"  # sent as given
     assert sum(c["method"] == "POST" for c in session.calls) == 1
 
 
 def test_invalid_language_pair_names_the_codes():
-    with pytest.raises(SupertextError, match=r"does not support this language pair \(en → xx\)") as info:
-        client(FakeSession()).translate_document("<p>x</p>", "xx", "en")
+    with pytest.raises(SupertextError, match=r"does not support this language pair \(en → es-ES\)") as info:
+        client(FakeSession()).translate_document("<p>x</p>", "es-ES", "en")
     assert info.value.code == "invalid_language_pair"
-    assert info.value.params == {"source": "en", "target": "xx"}
+    assert info.value.params == {"source": "en", "target": "es-ES"}
+
+
+def test_politeness_where_supertext_has_none_is_refused_before_sending():
+    session = FakeSession()
+    with pytest.raises(SupertextError, match=r"no formal or informal tone for this language \(en-US\)") as info:
+        client(session).translate_document("<p>x</p>", "en-US", "de", "more")
+    assert info.value.code == "unsupported_feature" and session.calls == []
+    assert "[en-US]" in client(session).translate_document("<p>x</p>", "en-US", "de")  # default tone works
+
+
+def test_key_check():
+    assert client(FakeSession()).check_api_key().status == "ok"
+    assert client(FakeSession(), "wrong").check_api_key().status == "invalid"
+    assert client(FakeSession(), "").check_api_key().status == "missing"
 
 
 def test_vendored_sdk_version():

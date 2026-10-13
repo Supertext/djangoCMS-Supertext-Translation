@@ -25,6 +25,8 @@ class ErrorCode:
     MISSING_API_KEY: Final = "missing_api_key"
     AUTHENTICATION_FAILURE: Final = "authentication_failure"
     INVALID_LANGUAGE_PAIR: Final = "invalid_language_pair"
+    UNSUPPORTED_LANGUAGE: Final = "unsupported_language"
+    UNSUPPORTED_FEATURE: Final = "unsupported_feature"
     NOT_FOUND: Final = "not_found"
     PAYLOAD_TOO_LARGE: Final = "payload_too_large"
     TOO_MANY_REQUESTS: Final = "too_many_requests"
@@ -43,6 +45,8 @@ _MESSAGES: Final = {
     ErrorCode.MISSING_API_KEY: "No Supertext API key is configured. " + _KEY_HELP,
     ErrorCode.AUTHENTICATION_FAILURE: "Supertext rejected the API key. Please check it. " + _KEY_HELP,
     ErrorCode.INVALID_LANGUAGE_PAIR: "Supertext does not support this language pair.",
+    ErrorCode.UNSUPPORTED_LANGUAGE: "This language has no Supertext language code. Map it to a Supertext language.",
+    ErrorCode.UNSUPPORTED_FEATURE: "Supertext does not support this option for the language pair.",
     ErrorCode.NOT_FOUND: "The file was not found at Supertext (it may have expired or been deleted).",
     ErrorCode.PAYLOAD_TOO_LARGE: "The content is too large for Supertext to translate in one go.",
     ErrorCode.TOO_MANY_REQUESTS: "Too many requests to Supertext. Please try again shortly.",
@@ -63,7 +67,10 @@ class SupertextError(Exception):
 
     ``code`` is one of :class:`ErrorCode`; decide what to show users from it. ``message``
     (also ``str(error)``) is English. ``detail`` is the API's own text (or the network error)
-    and is never translated. The API key never appears in any of these.
+    and is never translated. ``source_lang``/``target_lang`` are set for ``invalid_language_pair``
+    and ``unsupported_feature`` when the API names them, and for ``unsupported_language`` (the code
+    that has no Supertext language); ``feature`` for ``unsupported_feature`` (e.g. ``politeness``).
+    The API key never appears in any of these.
     """
 
     def __init__(
@@ -75,6 +82,7 @@ class SupertextError(Exception):
         api_error_code: str | None = None,
         source_lang: str | None = None,
         target_lang: str | None = None,
+        feature: str | None = None,
         message: str | None = None,
     ) -> None:
         self.code = code
@@ -84,6 +92,7 @@ class SupertextError(Exception):
         self.api_error_code = api_error_code
         self.source_lang = source_lang
         self.target_lang = target_lang
+        self.feature = feature
         super().__init__(self.message)
 
     def __str__(self) -> str:
@@ -113,13 +122,17 @@ def error_for_response(status: int, body: str) -> SupertextError:
 
     def text(name: str) -> str | None:
         value = fields.get(name)
-        return value if isinstance(value, str) else None
+        return value if isinstance(value, str) and value else None
 
     api_error_code = text("error_code")
-    source_lang = target_lang = None
-    if status in (400, 404) and (api_error_code == "INVALID_LANGUAGE_PAIR" or "INVALID_LANGUAGE_PAIR" in body):
+    source_lang = target_lang = feature = None
+    if status in (400, 404) and "INVALID_LANGUAGE_PAIR" in body:
         code = ErrorCode.INVALID_LANGUAGE_PAIR
         source_lang, target_lang = text("source_lang"), text("target_lang")
+    elif status == 400 and api_error_code == "FEATURE_ERROR":
+        # The pair exists, but not with this option (e.g. politeness for en-US).
+        code = ErrorCode.UNSUPPORTED_FEATURE
+        source_lang, target_lang, feature = text("source_lang"), text("target_lang"), text("feature")
     elif status in (401, 403):
         code = ErrorCode.AUTHENTICATION_FAILURE
     elif status == 404:
@@ -128,7 +141,7 @@ def error_for_response(status: int, body: str) -> SupertextError:
         code = ErrorCode.PAYLOAD_TOO_LARGE
     elif status == 429:
         code = ErrorCode.TOO_MANY_REQUESTS
-    elif status >= 500:
+    elif 500 <= status <= 599:
         code = ErrorCode.SERVICE_UNAVAILABLE
     else:
         code = ErrorCode.UNEXPECTED_STATUS
@@ -139,4 +152,5 @@ def error_for_response(status: int, body: str) -> SupertextError:
         api_error_code=api_error_code,
         source_lang=source_lang,
         target_lang=target_lang,
+        feature=feature,
     )

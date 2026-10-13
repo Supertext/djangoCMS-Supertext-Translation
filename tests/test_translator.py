@@ -95,6 +95,22 @@ def test_errors_are_reported_per_language(page):
     assert not PageContent.admin_manager.filter(page=page, language="de-ch").exists()
 
 
+def test_unmapped_language_is_not_sent(page, session):
+    # "it" is not a Supertext code (it-IT or it-CH): reported for that language, nothing sent for it.
+    client = options().client(session=session, sleep=lambda s: None)
+    results = translator.translate_page(page, "en", ["it", "fr-ch"], options=options(), client=client)
+    assert [(r.language, r.status, r.code) for r in results] == [("it", "error", "unsupported_language"), ("fr-ch", "translated", "")]
+    assert "The language it has no Supertext language yet" in results[0].message
+    assert [c["data"]["target_lang"] for c in session.calls if c["method"] == "POST"] == ["fr-CH"]
+
+
+def test_politeness_without_support_is_reported(page, session):
+    opts = conf.load({"API_KEY": "test-key", "API_URL": "https://api.test/v1/", "LANGUAGES": {"en-us": {"politeness": "more"}}, "POLL_INTERVAL": 0})
+    results = translator.translate_page(page, "en", ["en-us"], options=opts, client=opts.client(session=session, sleep=lambda s: None))
+    assert results[0].code == "unsupported_feature" and "no formal or informal tone" in results[0].message
+    assert not [c for c in session.calls if c["method"] == "POST"]
+
+
 def test_describe(page, session):
     client = options().client(session=session, sleep=lambda s: None)
     translator.translate_page(page, "en", ["de-ch"], options=options(), client=client)
@@ -146,7 +162,8 @@ def test_settings_page(session, client):
     assert b"Plugin version" in response.content and f">{__version__}</a>".encode() in response.content
     assert f'href="{release}" target="_blank" rel="noopener"'.encode() in response.content
     response = client.post(url, follow=True)
-    assert b"Connected. The API key works." in response.content
+    assert b"API key checked: the connection to Supertext works." in response.content
+    assert b'data-supertext-key-check="ok"' in response.content
 
 
 def test_settings_page_version_without_release(session, client, monkeypatch):

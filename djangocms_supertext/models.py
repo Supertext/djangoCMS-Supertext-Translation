@@ -32,3 +32,18 @@ class Translation(models.Model):
 
     def __str__(self):
         return f"{self.page} {self.source_language} → {self.target_language}"
+
+
+class State(models.Model):
+    """The plugin's own small key/value store: the version reporter's state (``key = "reporter"``,
+    JSON: what was reported last, the latest API key check). Never the API key itself."""
+
+    key = models.CharField(max_length=64, primary_key=True)
+    value = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Supertext state"
+        default_permissions = ()
+
+    def __str__(self):
+        return self.key

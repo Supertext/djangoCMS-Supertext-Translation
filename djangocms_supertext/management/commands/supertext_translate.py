@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
-from djangocms_supertext import translator
+from djangocms_supertext import reporting, translator
 from djangocms_supertext.client import SupertextError
 
 
@@ -24,6 +24,7 @@ class Command(BaseCommand):
             results = translator.translate_page(page, options["source"], targets, overwrite=options["overwrite"])
         except SupertextError as error:
             raise CommandError(str(error)) from error
+        reporting.report_translation(results)
         failed = False
         for result in results:
             line = f"{result.language}: {result.status}" + (f" ({result.message})" if result.message else "")

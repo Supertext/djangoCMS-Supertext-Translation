@@ -12,21 +12,34 @@ import re
 import time
 import uuid
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import Final, Literal
 from urllib.parse import quote
 
-from . import html_document, language_codes
+from ..transport import HttpRequest, HttpResponse, Transport, UrllibTransport
+from . import html_document
+from .api_key_check import KEY_CHECK_TIMEOUT, ApiKeyCheck, api_key_check_from_error, api_key_fingerprint, iso_seconds
 from .errors import ErrorCode, SupertextError, error_for_response
 from .html_document import Segment
-from .transport import HttpRequest, HttpResponse, Transport, UrllibTransport
 
 LIVE_BASE_URL: Final = "https://api.supertext.com/v1/"
 
 DEFAULT_MAX_CHARACTERS: Final = 900_000
-"""Characters per document in :meth:`Client.translate_texts`: well below the API's limit of 1,000,000."""
+"""Characters per document in :meth:`SupertextClient.translate_texts`: well below the API's limit of 1,000,000."""
 
 Politeness = Literal["default", "more", "less"]
 """``more`` = formal address (Sie, vous), ``less`` = informal (du, tu), ``default`` = let Supertext decide."""
+
+
+@dataclass(frozen=True)
+class FeatureSupport:
+    """One language pair from ``GET features``."""
+
+    source_lang: str
+    target_lang: str
+    features: tuple[str, ...]
+    """E.g. ``supports_politeness``, ``supports_glossary``."""
+
 
 _USER_AGENT: Final = "supertext-sdk-python"
 _PREFIX = re.compile(r"^supertext-auth-key(?:\s+|$)", re.IGNORECASE)
@@ -59,12 +72,13 @@ def retry_delay_ms(attempt: int, retry_after: str | None = None, rand: Callable[
     return min(30_000, delay)
 
 
-class Client:
+class SupertextClient:
     """Translates HTML documents and texts with Supertext.
 
     A blank API key doesn't fail here: the first request raises ``SupertextError(missing_api_key)``
     without sending anything, so integrations can build the client before the key is configured.
-    Times are in seconds. ``transport``, ``sleep`` and ``clock`` are injectable for tests.
+    Times are in seconds. ``transport``, ``sleep``, ``clock`` (monotonic, for timeouts) and ``now``
+    (Unix time, for :attr:`ApiKeyCheck.checked_at`) are injectable for tests.
     """
 
     def __init__(
@@ -80,6 +94,7 @@ class Client:
         transport: Transport | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
+        now: Callable[[], float] = time.time,
     ) -> None:
         self._api_key = api_key or ""
         self.base_url = (base_url or LIVE_BASE_URL).rstrip("/") + "/"
@@ -91,27 +106,76 @@ class Client:
         self._transport: Transport = transport or UrllibTransport()
         self._sleep = sleep
         self._clock = clock
+        self._now = now
 
     def __repr__(self) -> str:
         # Never show the key.
-        return f"Client(base_url={self.base_url!r})"
+        return f"SupertextClient(base_url={self.base_url!r})"
 
     # -- Single steps ------------------------------------------------------------------------
+
+    def get_features(self) -> list[FeatureSupport]:
+        """The language pairs the API offers right now, with their features (``supports_politeness``, …).
+
+        The live version of :data:`Languages.SOURCES <supertext.v1.languages.SOURCES>` /
+        :data:`TARGETS <supertext.v1.languages.TARGETS>`, e.g. for a settings page. Cost-free.
+        Malformed entries are skipped.
+        """
+        try:
+            data = json.loads(self._request("GET", "features").text)
+        except ValueError:
+            return []
+        items = data.get("supported_features") if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            return []
+        result = []
+        for item in items:
+            entry = item if isinstance(item, dict) else {}
+            source_lang, target_lang = entry.get("source_lang"), entry.get("target_lang")
+            if not isinstance(source_lang, str) or not isinstance(target_lang, str):
+                continue
+            features = entry.get("features")
+            names = tuple(f for f in features if isinstance(f, str)) if isinstance(features, list) else ()
+            result.append(FeatureSupport(source_lang, target_lang, names))
+        return result
 
     def validate_api_key(self) -> None:
         """Cost-free check that the key is accepted; raises :class:`SupertextError` otherwise."""
         self._request("GET", "features")
+
+    def check_api_key(self) -> ApiKeyCheck:
+        """The automatic API key check: ``GET features`` with at most 10 s timeout, as an :class:`ApiKeyCheck`.
+
+        Status ``ok`` (2xx), ``invalid`` (401/403), ``unreachable`` (no answer, 5xx) or ``error``
+        (anything else, e.g. 429 after the retries). Never raises. A blank key gives ``missing``
+        without a request.
+        """
+        checked_at = iso_seconds(self._now())
+        fingerprint = api_key_fingerprint(self._api_key)
+        if not fingerprint:
+            return ApiKeyCheck("missing", checked_at, None, None, fingerprint)
+        try:
+            response = self._request("GET", "features", timeout=min(KEY_CHECK_TIMEOUT, self.request_timeout))
+        except Exception as error:
+            return api_key_check_from_error(error, checked_at, fingerprint)
+        return ApiKeyCheck("ok", checked_at, response.status, None, fingerprint)
 
     def submit(
         self, html: str, target_lang: str, source_lang: str | None = None, politeness: Politeness = "default"
     ) -> str:
         """Uploads an HTML document and returns its file id.
 
-        Language codes are corrected here (``de`` → ``de-DE`` as target, ``en-US`` → ``en`` as source).
-        Without ``source_lang`` Supertext detects the language.
+        The language codes are sent as given (trimmed): resolve CMS languages with
+        :meth:`Languages.target() <supertext.v1.Languages.target>` / :meth:`Languages.source()
+        <supertext.v1.Languages.source>` first. An empty ``target_lang`` raises
+        ``SupertextError(unsupported_language)`` without a request. Without ``source_lang`` Supertext
+        detects the language.
         """
-        fields = [("target_lang", language_codes.target(target_lang))]
-        source = language_codes.source(source_lang or "")
+        target = target_lang.strip()
+        if not target:
+            raise SupertextError(ErrorCode.UNSUPPORTED_LANGUAGE)
+        fields = [("target_lang", target)]
+        source = (source_lang or "").strip()
         if source:
             fields.append(("source_lang", source))
         if politeness in ("more", "less"):
@@ -202,7 +266,13 @@ class Client:
     # -- HTTP --------------------------------------------------------------------------------
 
     def _request(
-        self, method: str, path: str, *, body: bytes | None = None, content_type: str | None = None
+        self,
+        method: str,
+        path: str,
+        *,
+        body: bytes | None = None,
+        content_type: str | None = None,
+        timeout: float | None = None,
     ) -> HttpResponse:
         authorization = auth_header(self._api_key)
         headers = {
@@ -212,7 +282,8 @@ class Client:
         }
         if content_type:
             headers["Content-Type"] = content_type
-        request = HttpRequest(method, self.base_url + path, headers, body, self.request_timeout)
+        request_timeout = self.request_timeout if timeout is None else timeout
+        request = HttpRequest(method, self.base_url + path, headers, body, request_timeout)
         attempt = 0
         while True:
             try:

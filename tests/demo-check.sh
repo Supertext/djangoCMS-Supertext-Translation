@@ -7,13 +7,14 @@ PORT=8000
 B=http://127.0.0.1:$PORT
 export DEMO_ADMIN_EMAIL=ci-admin@example.com DEMO_ADMIN_PASSWORD="ci-$(openssl rand -hex 8)"
 export DEMO_EDITOR_EMAIL=ci-editor@example.com DEMO_EDITOR_PASSWORD="ci-$(openssl rand -hex 8)"
-py() { docker exec -e SUPERTEXT_API_KEY=anything -e SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/ -w /app/demo demo python manage.py "$@"; }
+STAND_IN=http://127.0.0.1:8765
+py() { docker exec -e SUPERTEXT_API_KEY=anything -e SUPERTEXT_API_URL=$STAND_IN/v1/ -e SUPERTEXT_REPORT_URL=$STAND_IN/report -w /app/demo demo python manage.py "$@"; }
 
 start() {
 	docker rm -f demo >/dev/null 2>&1 || true
 	docker run -d --name demo --network host -e PORT=$PORT -e DATABASE_URL="$PG_URL" -e DJANGO_SECRET_KEY=ci \
 		-e DEMO_ADMIN_EMAIL -e DEMO_ADMIN_PASSWORD -e DEMO_EDITOR_EMAIL -e DEMO_EDITOR_PASSWORD \
-		-e SUPERTEXT_API_KEY=anything -e SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/ supertext-djangocms-demo >/dev/null
+		-e SUPERTEXT_API_KEY=anything -e SUPERTEXT_API_URL=$STAND_IN/v1/ -e SUPERTEXT_REPORT_URL=$STAND_IN/report supertext-djangocms-demo >/dev/null
 	for _ in $(seq 90); do curl -sf -o /dev/null $B/en/admin/login/ && break; sleep 2; done
 	curl -sf -o /dev/null $B/en/admin/login/
 	docker logs demo 2>&1 | grep '\[demo\]' || true
@@ -35,6 +36,19 @@ assert not editor.is_superuser and editor.has_perm('djangocms_supertext.translat
 print('accounts OK')"
 
 py supertext_check
+
+# Commando Center: the public ping, and the reports supertext_check sent to the stand-in (never the key).
+CHALLENGE=ci-challenge-0123456789
+curl -sf "$B/en/admin/djangocms_supertext/translation/ping/?challenge=$CHALLENGE" | grep > /dev/null "\"challenge\":\"$CHALLENGE\""
+test "$(curl -s -o /dev/null -w '%{http_code}' "$B/en/admin/djangocms_supertext/translation/ping/?challenge=bad")" = 400
+reports=$(curl -sf $STAND_IN/reports)
+grep > /dev/null '"event":"installed"' <<< "$reports"
+grep > /dev/null '"event":"check"' <<< "$reports"
+grep > /dev/null '"name":"djangoCMS-Supertext-Translation"' <<< "$reports"
+grep > /dev/null '"name":"django CMS"' <<< "$reports"
+grep > /dev/null '/en/admin/djangocms_supertext/translation/ping/' <<< "$reports"
+if grep -qF anything <<< "$reports"; then echo "The API key appeared in a report"; exit 1; fi
+echo "Commando Center OK"
 PAGE=$(py shell -c "from cms.models import PageContent; print(PageContent.admin_manager.get(language='en', title='Swiss chocolate, shipped worldwide').page_id)" | tail -1)
 py supertext_translate "$PAGE" --from en | tee /tmp/translate.log
 test "$(grep -c ': translated' /tmp/translate.log)" = 3

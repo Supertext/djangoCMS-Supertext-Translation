@@ -1,0 +1,183 @@
+"""Commando Center: version reports, the API key check and the ping endpoint (reporting.py), with a
+FakeSession for Supertext and the center (never the live services)."""
+
+import io
+import json
+
+import pytest
+from django.contrib.auth.models import User
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import override_settings
+from django.urls import reverse
+from django.utils import translation
+
+from djangocms_supertext import __version__, admin as st_admin, conf, reporting
+from djangocms_supertext.models import State
+from djangocms_supertext._vendor.supertext.v1 import ApiKeyCheck
+
+pytestmark = pytest.mark.django_db
+
+PING = "/en/admin/djangocms_supertext/translation/ping/"
+CHALLENGE = "abcdefghijklmnop1234"
+
+
+@pytest.fixture
+def admin_client(client):
+    client.force_login(User.objects.create_superuser("admin", "admin@example.com", "pw-123456789"))
+    return client
+
+
+def state():
+    return json.loads(State.objects.get(key="reporter").value)
+
+
+def test_settings_page_reports_installed_once(admin_client, no_live_services):
+    response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert response.status_code == 200
+    assert b"Send version information to Supertext" in response.content and b'data-supertext-reports="on"' in response.content
+    assert ("http://testserver" + PING).encode() in response.content
+    [report] = no_live_services.reports
+    assert report["event"] == "installed"
+    assert report["site_url"] == "http://testserver"
+    assert report["plugin"] == {"name": "djangoCMS-Supertext-Translation", "version": __version__}
+    assert report["system"]["name"] == "django CMS" and report["system"]["version"]
+    assert report["runtime"]["name"] == "Python"
+    assert report["api_key_configured"] is True and report["api_key_check"]["status"] == "ok"
+    assert report["callback"] == {"url": "http://testserver" + PING}
+    assert "test-key" not in json.dumps(report)
+    stored = state()
+    assert stored["reportedVersions"].startswith(__version__ + "|") and stored["keyCheck"]["status"] == "ok"
+    assert "test-key" not in State.objects.get(key="reporter").value
+
+    # Nothing changed: no new report, no new key check.
+    calls = len(no_live_services.calls)
+    response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert len(no_live_services.reports) == 1 and len(no_live_services.calls) == calls
+    assert b'data-supertext-key-check="ok"' in response.content and b"checked " in response.content
+
+
+def test_upgrade_is_reported(admin_client, no_live_services, monkeypatch):
+    admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    monkeypatch.setattr(reporting, "__version__", "9.9.9")
+    admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert [r["event"] for r in no_live_services.reports] == ["installed", "upgraded"]
+    assert no_live_services.reports[1]["plugin"]["version"] == "9.9.9"
+
+
+@override_settings(SUPERTEXT={"API_KEY": "test-key", "API_URL": "https://api.test/v1/", "VERSION_REPORTS": False})
+def test_reports_off(admin_client, client, no_live_services):
+    response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert b'data-supertext-reports="off"' in response.content
+    assert b"Off (VERSION_REPORTS in the SUPERTEXT setting)" in response.content
+    assert no_live_services.reports == []
+    assert state()["keyCheck"]["status"] == "ok"  # the key check runs anyway
+    assert client.get(PING, {"challenge": CHALLENGE}).status_code == 404
+
+
+def test_reports_off_by_environment(admin_client, no_live_services, monkeypatch):
+    monkeypatch.setenv("SUPERTEXT_VERSION_REPORTS", "0")
+    response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert b"Off (SUPERTEXT_VERSION_REPORTS=0)" in response.content and no_live_services.reports == []
+
+
+def test_ping(client):
+    response = client.get(PING, {"challenge": CHALLENGE})  # no login
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/json" and response["Cache-Control"] == "no-store"
+    assert json.loads(response.content) == {"ok": True, "plugin": "djangoCMS-Supertext-Translation", "challenge": CHALLENGE}
+    assert client.get(PING, {"challenge": "<script>"}).status_code == 400
+    assert client.get(PING).status_code == 400
+    assert client.post(PING, {"challenge": CHALLENGE}).status_code == 405
+
+
+def test_test_connection_shows_and_reports_a_rejected_key(admin_client, no_live_services):
+    admin_client.get(reverse("admin:djangocms_supertext_settings"))  # installed, key ok
+    with override_settings(SUPERTEXT={"API_KEY": "wrong", "API_URL": "https://api.test/v1/"}):
+        response = admin_client.post(reverse("admin:djangocms_supertext_settings"), follow=True)
+    assert b"Supertext rejected the API key." in response.content
+    assert f'<a href="{conf.API_KEY_URL}" target="_blank" rel="noopener">supertext.com → Integrations → API</a>'.encode() in response.content
+    assert f'<a href="{conf.SIGNUP_URL}" target="_blank" rel="noopener">supertext.com</a>'.encode() in response.content
+    assert [r["event"] for r in no_live_services.reports] == ["installed", "api_key_check"]
+    assert no_live_services.reports[1]["api_key_check"]["status"] == "invalid"
+
+
+def test_rejected_key_during_translation_is_reported_once(no_live_services):
+    from cms.api import create_page
+
+    from djangocms_supertext import translator
+
+    page = create_page("Hello", "page.html", "en")
+    options = conf.load({"API_KEY": "wrong", "API_URL": "https://api.test/v1/", "POLL_INTERVAL": 0, "SITE_URL": "https://www.example.ch"})
+    reporting.run("on_request", options)  # installed (the key check says invalid already)
+    State.objects.filter(key="reporter").update(value=json.dumps({**state(), "keyCheck": None, "reportedKeyStatus": "ok"}))
+    for _ in range(2):
+        results = translator.translate_page(page, "en", ["de-ch"], options=options)
+        assert results[0].code == "authentication_failure" and results[0].http_status == 401
+        reporting.report_translation(results, options)
+    assert [r["event"] for r in no_live_services.reports] == ["installed", "api_key_check"]
+    assert no_live_services.reports[1]["site_url"] == "https://www.example.ch"
+    assert state()["keyCheck"]["status"] == "invalid"
+
+
+def test_supertext_check_sends_a_check_report(no_live_services):
+    stdout = io.StringIO()
+    with override_settings(SUPERTEXT={"API_KEY": "test-key", "API_URL": "https://api.test/v1/", "SITE_URL": "https://www.example.ch"}):
+        call_command("supertext_check", stdout=stdout)
+    out = stdout.getvalue()
+    assert "The API key works" in out and "Version report to Supertext: sent" in out
+    assert no_live_services.reports[-1]["event"] == "check"
+    with override_settings(SUPERTEXT={"API_KEY": "wrong", "API_URL": "https://api.test/v1/", "SITE_URL": "https://www.example.ch"}):
+        with pytest.raises(CommandError, match="Supertext rejected the API key"):
+            call_command("supertext_check", stdout=io.StringIO())
+
+
+def test_no_site_url_no_report(no_live_services):
+    # Commands without a request: the Django site is still example.com, so nothing is reported; the key is still checked.
+    result = reporting.run("on_request", conf.load())
+    assert result is not None and result.check.status == "ok" and no_live_services.reports == []
+
+
+def test_center_failure_never_breaks_and_backs_off(admin_client, monkeypatch, no_live_services):
+    monkeypatch.setenv("SUPERTEXT_REPORT_URL", "https://down.test/report")
+    response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert response.status_code == 200
+    assert state()["lastFailureAt"] and state()["reportedVersions"] is None
+
+
+def test_storage_failure_never_breaks(admin_client, monkeypatch):
+    def broken(*args, **kwargs):
+        raise RuntimeError("database down")
+
+    monkeypatch.setattr(reporting, "load_state", broken)
+    assert reporting.run("on_request", conf.load()) is None
+    assert reporting.last_check() is None
+    assert admin_client.get(reverse("admin:djangocms_supertext_settings")).status_code == 200
+
+
+def test_key_check_messages_in_four_languages():
+    check = ApiKeyCheck("error", "2026-10-13T08:00:00Z", 429, None, "f")
+    with translation.override("de"):
+        assert reporting.check_message(check) == "Der API-Schlüssel konnte nicht geprüft werden: Supertext hat mit einem Fehler geantwortet (429). Die Einstellungen sind gespeichert; prüfen Sie ihn später erneut."
+    with translation.override("fr"):
+        assert reporting.check_message(ApiKeyCheck("ok", "", 200, None, "f")).startswith("Clé API vérifiée")
+    with translation.override("it"):
+        html = reporting.check_html(ApiKeyCheck("missing", "", None, None, ""))
+    assert html.count('target="_blank" rel="noopener"') == 2 and "supertext.com → Integrations → API</a>" in html
+
+
+def test_language_rows_show_unmapped_and_unsupported_tone():
+    options = conf.load({"LANGUAGES": {"en-us": {"politeness": "more"}, "de": {"code": "de-CH"}}})
+    assert st_admin._language_row(options, {"code": "it"})["target"] is None
+    assert st_admin._language_row(options, {"code": "de"}) | {"name": ""} == {
+        "code": "de", "name": "", "target": "de-CH", "mapped": True, "politeness": "default", "politeness_unsupported": False,
+    }
+    assert st_admin._language_row(options, {"code": "en-us"})["politeness_unsupported"] is True
+
+
+def test_settings_page_marks_unmapped_languages(admin_client):
+    languages = {1: [{"code": "en", "name": "English"}, {"code": "it", "name": "Italiano"}]}
+    with override_settings(CMS_LANGUAGES=languages, LANGUAGES=[("en", "English"), ("it", "Italiano")]):
+        response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert b"Not mapped: set a Supertext code for it under LANGUAGES" in response.content
+    assert b"<code>gsw-u-sd-chzh</code>" in response.content  # the list of Supertext languages

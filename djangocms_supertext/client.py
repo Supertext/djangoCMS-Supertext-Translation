@@ -9,7 +9,8 @@ Supertext Python SDK (``djangocms_supertext/_vendor/supertext``, copied by
 4. ``DELETE translate/ai/file/{id}``          cleanup, also after errors
 
 plus the ``Authorization: Supertext-Auth-Key <key>`` header (a pasted prefix is stripped),
-HTTP 429 retries, language codes and packing many strings into one document. Requests go
+HTTP 429 retries and packing many strings into one document. Language codes are resolved
+before (``conf.Options.target_code``, the SDK's ``Languages``); the SDK sends them as given. Requests go
 through ``requests`` (the plugin's HTTP library: proxies, certificates). SDK errors come out
 as this module's :class:`SupertextError`, whose message template is translated in the admin.
 
@@ -24,8 +25,8 @@ from pathlib import Path
 
 import requests
 
-from ._vendor import supertext as sdk
-from ._vendor.supertext import ErrorCode, HttpRequest, HttpResponse, Segment, html_document, plan_batches
+from ._vendor.supertext import v1 as sdk
+from ._vendor.supertext.v1 import ApiKeyCheck, ErrorCode, HttpRequest, HttpResponse, Languages, Segment, html_document, plan_batches
 
 LIVE = sdk.LIVE_BASE_URL
 ENVIRONMENTS = {
@@ -63,6 +64,14 @@ MESSAGES: dict[str, str] = {
     ),
     ErrorCode.INVALID_LANGUAGE_PAIR: gettext_noop(
         "Supertext does not support this language pair (%(source)s → %(target)s). Check the language codes in the LANGUAGES option."
+    ),
+    ErrorCode.UNSUPPORTED_LANGUAGE: gettext_noop(
+        "The language %(language)s has no Supertext language yet. Ask your administrator to map it "
+        "(code under LANGUAGES in the SUPERTEXT setting, e.g. de-CH)."
+    ),
+    ErrorCode.UNSUPPORTED_FEATURE: gettext_noop(
+        "Supertext offers no formal or informal tone for this language (%(target)s). "
+        "Set its form of address to the default (politeness under LANGUAGES in the SUPERTEXT setting)."
     ),
     ErrorCode.NOT_FOUND: gettext_noop("The requested Supertext resource was not found."),
     ErrorCode.PAYLOAD_TOO_LARGE: gettext_noop("The content is too large for Supertext to translate in one go."),
@@ -107,6 +116,10 @@ class SupertextError(Exception):
             params, detail = {"error": detail or "?"}, ""
         elif error.code == ErrorCode.INVALID_LANGUAGE_PAIR:
             params = {"source": error.source_lang or "?", "target": error.target_lang or "?"}
+        elif error.code == ErrorCode.UNSUPPORTED_LANGUAGE:
+            params = {"language": error.target_lang or error.source_lang or "?"}
+        elif error.code == ErrorCode.UNSUPPORTED_FEATURE:
+            params = {"target": error.target_lang or "?"}
         message = MESSAGES.get(error.code, error.message)
         return cls(message, error.status, params=params, detail=detail, code=error.code)
 
@@ -155,14 +168,16 @@ class SupertextClient:
 
         self.api_key = normalize_key(api_key)
         self.base_url = (base_url or LIVE).rstrip("/") + "/"
-        self.sdk = sdk.Client(
+        self.user_agent = f"djangocms-supertext-translation/{__version__}"
+        self.transport = RequestsTransport(session or requests.Session())
+        self.sdk = sdk.SupertextClient(
             self.api_key,
             base_url=self.base_url,
             poll_interval=poll_interval,
             timeout=poll_timeout,
             request_timeout=request_timeout,
-            user_agent=f"djangocms-supertext-translation/{__version__}",
-            transport=RequestsTransport(session or requests.Session()),
+            user_agent=self.user_agent,
+            transport=self.transport,
             sleep=sleep,
         )
 
@@ -173,9 +188,13 @@ class SupertextClient:
     def translate_document(self, html: str, target_language: str, source_language: str = "", politeness: str = "default") -> str:
         """Translates a complete HTML document and returns the translated HTML.
 
-        Language codes may be in any form: the target is sent with a region (``de`` -> ``de-DE``),
-        the source as the bare language (empty: auto-detect); ``politeness`` is default, more or less.
+        The codes are sent as given: Supertext codes (``de-CH``, ``es``; see ``Languages.TARGETS``) for
+        the target, a bare language for the source (empty: auto-detect); ``politeness`` is default,
+        more or less. Formal/informal for a target that doesn't offer it is refused before sending
+        (``unsupported_feature``), so a setting is never silently dropped.
         """
+        if politeness in ("more", "less") and Languages.supports_politeness(target_language) is False:
+            raise SupertextError.from_sdk(sdk.SupertextError(ErrorCode.UNSUPPORTED_FEATURE, target_lang=target_language, feature="politeness"))
         try:
             return self.sdk.translate_html(html, target_language, source_language or None, politeness)  # type: ignore[arg-type]
         except sdk.SupertextError as error:
@@ -197,6 +216,10 @@ class SupertextClient:
                 if text is not None:
                     out[int(key)] = text
         return out
+
+    def check_api_key(self) -> ApiKeyCheck:
+        """The automatic key check (``ok``, ``invalid``, ``missing``, ``unreachable``, ``error``). Never raises."""
+        return self.sdk.check_api_key()
 
     def validate_api_key(self) -> None:
         """Cost-free check that the key is accepted."""

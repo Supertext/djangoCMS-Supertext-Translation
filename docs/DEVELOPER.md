@@ -27,12 +27,14 @@ _apply(): create_page_content() (new language) or update the fields; replace the
 | --- | --- |
 | `client.py` | Wrapper around the bundled Supertext SDK (`_vendor/supertext`): requests through `requests`, segments packed into documents below the size limit, SDK error codes turned into translatable messages. No Django imports; session and `sleep` injectable for tests |
 | `_vendor/supertext/` | Bundled copy of the Supertext Python SDK (see *Supertext SDK*). Never edit |
-| `conf.py` | `SUPERTEXT` setting + `SUPERTEXT_API_KEY` / `SUPERTEXT_API_URL`; language code → Supertext code (`de-ch` → `de-CH`) and tone; `DEFAULT_PLUGIN_FIELDS` |
+| `conf.py` | `SUPERTEXT` setting + `SUPERTEXT_API_KEY` / `SUPERTEXT_API_URL` / `SUPERTEXT_VERSION_REPORTS`; language code → Supertext code (mapping, else exact match, else `unsupported_language`) and tone; `DEFAULT_PLUGIN_FIELDS` |
 | `translator.py` | Field rules, translation, creating/replacing the target language |
-| `models.py` | `Translation` (log; custom permission `translate`) |
-| `admin.py` | Log list, translate dialog, settings page with *Test connection* and the plugin version (read from `djangocms_supertext.__version__`; X.Y.Z links to the GitHub release `vX.Y.Z`) (all as admin views, no URL include needed) |
+| `models.py` | `Translation` (log; custom permission `translate`), `State` (key/value: the version reporter's JSON state) |
+| `admin.py` | Log list, translate dialog, settings page with the key check, *Test connection*, the reporting setting, the language table and the plugin version (read from `djangocms_supertext.__version__`; X.Y.Z links to the GitHub release `vX.Y.Z`), and the public ping route (all as admin URLs, no URL include needed) |
+| `reporting.py` | Commando Center: version reports, API key check (the SDK's `InstallationReporter`), site URL, ping path, state in `State`, the key-check messages |
+| `views.py`, `urls.py` | The public ping view; `urls.py` is the optional include for `/supertext/ping` |
 | `cms_toolbars.py` | The toolbar entry |
-| `management/commands/` | `supertext_translate <page id> --from en [--to de-ch fr-ch] [--overwrite]`, `supertext_check` |
+| `management/commands/` | `supertext_translate <page id> --from en [--to de-ch fr-ch] [--overwrite]`, `supertext_check` (key check, a `check` report, the plugin version) |
 | `locale/{de,fr,it}/` | German, French and Italian strings (`django.po` and compiled `django.mo`) |
 
 ### Field rules
@@ -64,21 +66,35 @@ Auth header: `Authorization: Supertext-Auth-Key <key>`. The header name must be 
 
 ## Supertext SDK
 
-The protocol above, the retries, the language codes and the `data-st-id` document (plain text escaped with `<br>` for line breaks, HTML as is) come from the official Supertext Python SDK ([Supertext/Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide)). The package ships a copy in `djangocms_supertext/_vendor/supertext/` (imported as `djangocms_supertext._vendor.supertext`, so an installed `supertext-sdk` can never clash with it); sites install nothing extra. `COMMIT` and `VERSION` there name the SDK revision; `client.SDK_VERSION` reads it.
+The protocol above, the retries, the language list (`Languages`), the key check, the version reports and the `data-st-id` document (plain text escaped with `<br>` for line breaks, HTML as is) come from the official Supertext Python SDK ([Supertext/Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide)). The package ships a copy in `djangocms_supertext/_vendor/supertext/` (imported as `djangocms_supertext._vendor.supertext`, so an installed `supertext-sdk` can never clash with it); sites install nothing extra. The API lives in its `v1` subpackage (`djangocms_supertext._vendor.supertext.v1`, SDK 0.2.0+); the SDK uses relative imports, so the copy needs no rewriting. `COMMIT` and `VERSION` there name the SDK revision; `client.SDK_VERSION` reads it.
 
-- Never edit `_vendor/`. Fix the SDK in its repository, then run `scripts/vendor-sdk.sh [ref]` (default `main`; `SDK_DIR=/path/to/clone` uses a local clone) and the tests.
+- Never edit `_vendor/`. Fix the SDK in its repository, then run `scripts/vendor-sdk.sh [ref]` (default `main`; `SDK_DIR=/path/to/clone` uses a local clone; it copies the package with its subpackages) and the tests.
 - `client.SupertextClient` keeps the package's interface (`translate_document`, `translate_segments`, `validate_api_key`) and turns every SDK error code into a `SupertextError` with a translatable template (`client.MESSAGES`). A new SDK error code needs a message there and in the three `.po` files.
 - The live API answers an unknown language (`xx-YY`) with HTTP 404 `INVALID_LANGUAGE_PAIR`; the SDK reports it as `invalid_language_pair` with both codes, shown as "Supertext does not support this language pair (en → xx-YY)".
 
 ## Language codes
 
-Supertext wants the **source** as a bare language (`en`) and the **target** as a regional code (`de-DE`, `fr-CH`, `en-US`); a bare target such as `de` is rejected with `INVALID_LANGUAGE_PAIR`. `conf.py` turns django CMS language codes into Supertext codes:
+Supertext accepts exactly the codes its `GET features` lists (the SDK's `Languages`, from the live API): bare sources (`en`, `de`); targets in one exact form each, regional for German, English, French, Italian and Portuguese (`de-CH`, `en-US`, `pt-BR`), with a script for Chinese and Serbian (`zh-Hans`, `sr-Latn`), a dialect for Swiss German (`gsw-u-sd-chzh`), bare for the others (`es`, `nl`, `sl`). Anything else is HTTP 404 `INVALID_LANGUAGE_PAIR`; formal/informal for a target without it (`en-US`, `rm`, …) is HTTP 400 `FEATURE_ERROR` (`unsupported_feature`). The old default regions (`es-ES`, `sl-SI`, `zh-CN`) are rejected, so there are none.
 
-- **Target** (`Options.target_code`): the `LANGUAGES` → `code` override if set, else the django CMS code. It is normalized (`de_ch`/`de-ch` → `de-CH`, `zh-hant` → `zh-Hant`, `es-419` stays, variants and extensions are dropped: `de_DE_formal` → `de-DE`); a code without region gets a default region (`regional()`, the SDK's `language_codes`): ar-SA, bg-BG, cs-CZ, da-DK, de-DE, el-GR, en-US, es-ES, et-EE, fi-FI, fr-FR, hr-HR, hu-HU, it-IT, ja-JP, ko-KR, lt-LT, lv-LV, nb-NO, nl-NL, pl-PL, pt-PT, ro-RO, ru-RU, sk-SK, sl-SI, sr-RS, sv-SE, th-TH, tr-TR, uk-UA, vi-VN, zh-CN (the same table in every Supertext plugin). Unknown bare codes are sent unchanged, so Supertext's error names them.
-- **Source** (`Options.source_code`): the bare language of the source's target code (`en-us` → `en`; an override's language wins). The client also strips any region before sending.
-- Translating within one language (`en` → `en-GB`) is allowed.
+`conf.py` turns django CMS language codes into Supertext codes **without guessing**:
 
-`tests/fake.py` and `tests/docs/stand-in.mjs` reject targets without region like the live API, so a regression fails the tests.
+- **Target** (`Options.target_code`): the `LANGUAGES` → `code` mapping (sent as it is), else a django CMS code that equals a Supertext code apart from case and `_`/`-` (`de-ch` → `de-CH`, `es`), else `SupertextError` `unsupported_language` with `%(language)s`. `translator.translate_page` reports it for that language and sends nothing for it. `de`, `en` or `zh-cn` must be mapped.
+- **Source** (`Options.source_code`): the bare language of the mapping or code (`en-us` → `en`, a mapped `de` → `de-CH` → `de`), else `unsupported_language`.
+- **Politeness**: `client.translate_document` refuses `more`/`less` for a target whose `Languages.supports_politeness()` is `False` before sending (`unsupported_feature`), so the admin's setting is never silently dropped; the settings page warns about it.
+- The settings page shows each language's code, *Not mapped* for the others, and the full `Languages.TARGETS` list.
+
+`tests/fake.py` and `tests/docs/stand-in.mjs` accept exactly the SDK's target list (404 for anything else) and reject politeness where it isn't offered, like the live API.
+
+## Commando Center: version reports, key check, ping
+
+Protocol: [Commando-Center-Supertext-Translation](https://github.com/Supertext/Commando-Center-Supertext-Translation) → `docs/DEVELOPER.md` → *Report protocol*; the SDK's `InstallationReporter`, `check_api_key()`, `reports_enabled()`, `ping_response()` and `reporter_state()` implement it, `reporting.py` only supplies what django CMS knows:
+
+- **Setting:** `SUPERTEXT["VERSION_REPORTS"]` (default on), `SUPERTEXT_VERSION_REPORTS` wins (`reports_enabled(setting)`). Off: no reports, ping 404. `SUPERTEXT_REPORT_URL` sends reports elsewhere (tests, the stand-in).
+- **Report fields:** `site_url` = `SUPERTEXT["SITE_URL"]`, else the admin request's scheme and host, else (commands) `https://<Django site domain>` unless it is still `example.com` (then nothing is reported, the key is still checked); plugin `djangoCMS-Supertext-Translation` with `djangocms_supertext.__version__`; system `django CMS` with `cms.__version__`; runtime Python (SDK default); `callback.url` = site URL + `reverse("djangocms_supertext_ping")` if the site includes `djangocms_supertext.urls`, else `reverse("admin:djangocms_supertext_ping")` (in `LANGUAGE_CODE`, so it doesn't change with the admin language). Reports and the key check go through the plugin's `RequestsTransport` (proxies).
+- **When:** the settings live in Django's settings file, so there is no `settings_saved`. `on_request` runs after the response has been sent (appended to the response's `_resource_closers`, which Django calls when the server closes the response) on the settings page and the translate dialog, and synchronously after `supertext_translate`: it reports `installed`, `upgraded` or `api_key_check` and checks the key only when its fingerprint changed. *Test connection* (POST to the settings page) runs `test_connection` and shows its result. A translation with `authentication_failure` runs `authentication_failed` (the result's `http_status`). `supertext_check` runs `test_connection`, then `report_check`. Front-end page views never report. Nothing in `reporting.run()` ever raises.
+- **State:** `State(key="reporter")`, the SDK's camelCase JSON (`reportedVersions`, `reportedKeyStatus`, `lastFailureAt`, `keyCheck` with the key fingerprint, never the key), migration `0002_state`.
+- **Messages:** `reporting.check_message()` has the center's key-check texts (`.po` files); `check_html()` links *supertext.com* and *supertext.com → Integrations → API* (new tab) for `invalid`/`missing`.
+- **Ping:** `views.ping`, GET only, no login (deliberately not wrapped in `admin_view`), CSRF-exempt, the SDK's status, headers (`Cache-Control: no-store`) and body.
 
 ## Local development
 
@@ -92,7 +108,7 @@ SUPERTEXT_API_KEY=… DJANGO_DEBUG=1 python manage.py runserver
 # site: http://localhost:8000/en/   admin: http://localhost:8000/en/admin/
 ```
 
-Without `DATABASE_URL` the demo uses SQLite (`demo/db.sqlite3`). To work without a real key, run the stand-in API (`node tests/docs/stand-in.mjs`) and start Django with `SUPERTEXT_API_KEY=anything SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/`. It returns real German, French and Italian for the demo's pages and `[de-CH] …`-prefixed text for anything else.
+Without `DATABASE_URL` the demo uses SQLite (`demo/db.sqlite3`). To work without a real key, run the stand-in API (`node tests/docs/stand-in.mjs`) and start Django with `SUPERTEXT_API_KEY=anything SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/ SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report` (the last one keeps version reports away from the live Commando Center). It returns real German, French and Italian for the demo's pages and `[de-CH] …`-prefixed text for anything else.
 
 ## Tests
 
@@ -101,14 +117,16 @@ pytest
 ```
 
 - `tests/test_client.py`: the SDK wrapper: protocol, auth header and prefix, 429 retries, errors (language pair included), clean-up, segments in one document. `tests/fake.py` reads the SDK's multipart body back.
-- `tests/test_conf.py`: settings and language codes.
-- `tests/test_translator.py`: end to end on SQLite with a fake API: a page with Text plugins in two placeholders is translated into two languages (fields, slug, markup, tone, plugins in the right placeholders, source untouched), skip and overwrite (no duplicated plugins), per-language errors, the translate dialog as an editor (and 403 without the permission), the settings page (including the plugin version and its release link) and *Test connection*.
+- `tests/test_conf.py`: settings, language codes (exact codes, no guessing, the mapping, sources) and the reporting setting.
+- `tests/test_translator.py`: end to end on SQLite with a fake API: a page with Text plugins in two placeholders is translated into two languages (fields, slug, markup, tone, plugins in the right placeholders, source untouched), skip and overwrite (no duplicated plugins), per-language errors (an unmapped language and an unsupported tone send nothing), the translate dialog as an editor (and 403 without the permission), the settings page (including the plugin version and its release link) and *Test connection*.
+- `tests/test_reporting.py`: the Commando Center with the fake (`tests/fake.py` answers `REPORT_URL` with 202): one `installed` report from the settings page (fields, callback URL, never the key), nothing when nothing changed, `upgraded`, reports off (setting and environment; ping 404, key still checked), ping answers (200/400/405), *Test connection* with a rejected key (links, `api_key_check`), a 401 during translation reported once, `supertext_check`'s `check` report, no site URL, center and database failures, the messages in four languages, *Not mapped* and the tone warning.
+- `tests/conftest.py`: every test runs against a `FakeSession` with `SUPERTEXT_REPORT_URL` pointing at the fake, so no test reaches the live API or the live center.
 - `tests/test_versioning.py` (`pytest --ds=tests.settings_versioning tests/test_versioning.py`, needs djangocms-versioning): new languages are drafts, published languages are not overwritten.
 
 CI (`.github/workflows/ci.yml`) on every push and pull request:
 
 - **test**: the suite on Python 3.11 with django CMS 4.x and Django 4.2, 3.12 with django CMS 5.0 and Django 5.2, 3.13 with django CMS 5.1 and Django 6 (plus the versioning test).
-- **demo**: builds the demo image, starts it twice against PostgreSQL with the stand-in (`tests/demo-check.sh`): demo accounts created once and never duplicated, no passwords in the log, the editor's permissions, `supertext_check`, translation of the sample page into three languages, the skip on a second run, and the German and French pages with their translated slugs and markup.
+- **demo**: builds the demo image, starts it twice against PostgreSQL with the stand-in (`tests/demo-check.sh`): demo accounts created once and never duplicated, no passwords in the log, the editor's permissions, `supertext_check`, the public ping and the `installed` and `check` reports the stand-in received (`GET /reports`; never the key), translation of the sample page into three languages, the skip on a second run, and the German and French pages with their translated slugs and markup.
 
 ## Demo (Railway)
 
@@ -122,7 +140,7 @@ The public demo is a container built from `demo/Dockerfile`: django CMS 5.1 with
 | --- | --- |
 | `Dockerfile` | `python:3.13-slim`, the demo's requirements and this package (installed from the repository), `collectstatic` |
 | `entrypoint.sh` | Every start: creates the database if missing, `migrate`, `demo_setup`, then gunicorn on `$PORT` |
-| `demo/settings.py` | Settings from environment variables; PostgreSQL via `DATABASE_URL` (database name `DJANGOCMS_DB_NAME`); WhiteNoise; `CMS_PERMISSION = False`; Supertext with formal tone for the three target languages |
+| `demo/settings.py` | Settings from environment variables; PostgreSQL via `DATABASE_URL` (database name `DJANGOCMS_DB_NAME`); WhiteNoise; `CMS_PERMISSION = False`; Supertext with `en` mapped to `en-US` (the other demo codes are Supertext codes), formal tone for the three target languages and `SITE_URL` from `RAILWAY_PUBLIC_DOMAIN` |
 | `site_setup/` | The page template (`page.html` with a language chooser) and the `demo_setup` command |
 | `createdb.py` | Creates the demo database on the server from `DATABASE_URL` |
 | `.env.example` | The variables below |
@@ -139,6 +157,8 @@ The public demo is a container built from `demo/Dockerfile`: django CMS 5.1 with
 | `DEMO_EDITOR_EMAIL`, `DEMO_EDITOR_PASSWORD` | Editor for automated tests and screenshots: staff user in the **Editors** group (pages, page contents, text plugins, *Can translate pages with Supertext*). django CMS has no built-in editor role, so `demo_setup` creates this group. |
 | `SUPERTEXT_API_KEY` | Supertext key |
 | `SUPERTEXT_API_URL` | Optional, e.g. a stand-in API |
+| `SUPERTEXT_VERSION_REPORTS` | Optional; `0` turns the version reports off (default on; the demo reports with `SITE_URL` = `https://$RAILWAY_PUBLIC_DOMAIN`) |
+| `SUPERTEXT_REPORT_URL` | Tests only: where reports go instead of the Commando Center (e.g. the stand-in's `/report`) |
 | `PORT` | Port gunicorn listens on (Railway sets it) |
 
 Railway also sets `RAILWAY_PUBLIC_DOMAIN`, which the settings use for `CSRF_TRUSTED_ORIGINS` and `demo_setup` for the Django site's domain.
@@ -157,18 +177,18 @@ docker run --rm -p 8000:8000 \
 
 ## Docs screenshots
 
-The images in `docs/images/` are generated by `tests/docs/screenshots.mjs` (Playwright) from a freshly set-up demo whose package talks to `tests/docs/stand-in.mjs`. The stand-in returns German, French and Italian for the demo's pages (`samples.json`, real Supertext output). Regenerate them whenever a screen they show changes:
+The images in `docs/images/` are generated by `tests/docs/screenshots.mjs` (Playwright) from a freshly set-up demo whose package talks to `tests/docs/stand-in.mjs`. The stand-in returns German, French and Italian for the demo's pages (`samples.json`, real Supertext output) and answers `POST /report` with 202, so screenshots never report to the live center (start Django with `SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report`). Regenerate them whenever a screen they show changes:
 
 ```bash
 cd tests/docs && npm install && npx playwright install chromium
 npm run stand-in &
 # a fresh demo database (migrate + demo_setup with DEMO_* set), served on :8095 with
-# SUPERTEXT_API_KEY=anything SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/
+# SUPERTEXT_API_KEY=anything SUPERTEXT_API_URL=http://127.0.0.1:8765/v1/ SUPERTEXT_REPORT_URL=http://127.0.0.1:8765/report
 BASE_URL=http://127.0.0.1:8095 DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=… \
   DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… npm run screenshots
 ```
 
-On the settings page the script shows the live API address and the public demo's domain (`SITE_DOMAIN`) instead of the local ones.
+On the settings page the script shows the live API address and the public demo's domain (`SITE_DOMAIN`, also in the ping address) instead of the local ones. The stand-in's port can be changed with `PORT=…` (then adjust the URLs above).
 
 ## Code quality and security checks
 
@@ -204,5 +224,6 @@ Publishing to PyPI (`python -m build && twine upload dist/*`) is planned.
 - Existing languages keep their slug when overwritten.
 - Static placeholders/aliases (djangocms-alias) and apphook content are not translated.
 - With djangocms-versioning, only drafts can be overwritten.
+- Settings live in Django's settings file, so there's no settings form with a select of Supertext languages, and version reports have no `settings_saved` event (the key check runs on a changed key instead).
 - Not on PyPI yet.
 - Human (professional) translation orders are not supported yet (the WordPress plugin has them).

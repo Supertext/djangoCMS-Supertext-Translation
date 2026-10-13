@@ -26,9 +26,6 @@ msgstr "Kann Seiten mit Supertext übersetzen"
 msgid "Checks the API key against the Supertext API. Nothing is translated or charged."
 msgstr "Prüft den API-Schlüssel bei der Supertext-API. Es wird nichts übersetzt oder verrechnet."
 
-msgid "Connected. The API key works."
-msgstr "Verbunden. Der API-Schlüssel funktioniert."
-
 msgid "Connection"
 msgstr "Verbindung"
 
@@ -112,9 +109,6 @@ msgstr "Supertext-Übersetzungen"
 
 msgid "Test connection"
 msgstr "Verbindung testen"
-
-msgid "The django CMS languages of each site, with the Supertext language and form of address they are translated with. Change them in the SUPERTEXT setting (LANGUAGES)."
-msgstr "Die django-CMS-Sprachen jeder Website mit der Supertext-Sprache und der Anrede, mit der übersetzt wird. Ändern lässt sich das in der Einstellung SUPERTEXT (LANGUAGES)."
 
 msgid "The page has no %(language)s version to translate from."
 msgstr "Die Seite hat keine Fassung in %(language)s, aus der übersetzt werden kann."
@@ -226,3 +220,72 @@ msgstr "Supertext hat mit HTTP %(code)s geantwortet."
 
 msgid "Supertext does not support this language pair (%(source)s → %(target)s). Check the language codes in the LANGUAGES option."
 msgstr "Supertext unterstützt dieses Sprachpaar nicht (%(source)s → %(target)s). Prüfen Sie die Sprachcodes in der Option LANGUAGES."
+
+msgid "API key check"
+msgstr "Prüfung des API-Schlüssels"
+
+msgid "API key checked: the connection to Supertext works."
+msgstr "API-Schlüssel geprüft: Die Verbindung zu Supertext funktioniert."
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Formal/informal"
+msgstr "Formell/informell"
+
+msgid "No API key is set yet. No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role)."
+msgstr "Es ist noch kein API-Schlüssel eingetragen. Noch kein Supertext-Konto? Erstellen Sie eines auf supertext.com. Ihren API-Schlüssel erstellen Sie unter supertext.com → Integrations → API (erfordert die Rolle Admin)."
+
+msgid "Not checked yet."
+msgstr "Noch nicht geprüft."
+
+msgid "Not mapped: set a Supertext code for it under LANGUAGES"
+msgstr "Nicht zugeordnet: unter LANGUAGES einen Supertext-Code dafür festlegen"
+
+msgid "Off (SUPERTEXT_VERSION_REPORTS=0)"
+msgstr "Aus (SUPERTEXT_VERSION_REPORTS=0)"
+
+msgid "Off (VERSION_REPORTS in the SUPERTEXT setting)"
+msgstr "Aus (VERSION_REPORTS in der Einstellung SUPERTEXT)"
+
+msgid "On"
+msgstr "Ein"
+
+msgid "Ping address"
+msgstr "Ping-Adresse"
+
+msgid "Send version information to Supertext"
+msgstr "Versionsinformationen an Supertext senden"
+
+msgid "Sends the site URL and the versions of this plugin, django CMS and the runtime to Supertext after an update and when the API key changes, so Supertext support can see which version you run. No content, no API key and no personal data are sent. Turn it off with VERSION_REPORTS: False in the SUPERTEXT setting or SUPERTEXT_VERSION_REPORTS=0."
+msgstr "Sendet die URL der Website sowie die Versionen dieses Plugins, von django CMS und der Laufzeitumgebung an Supertext, nach einem Update und wenn sich der API-Schlüssel ändert. So sieht der Supertext-Support, welche Version Sie einsetzen. Es werden keine Inhalte, kein API-Schlüssel und keine Personendaten übertragen. Mit VERSION_REPORTS: False in der Einstellung SUPERTEXT oder SUPERTEXT_VERSION_REPORTS=0 schalten Sie es aus."
+
+msgid "Status"
+msgstr "Status"
+
+msgid "Supertext languages"
+msgstr "Supertext-Sprachen"
+
+msgid "Supertext offers no formal or informal tone for this language (%(target)s). Set its form of address to the default (politeness under LANGUAGES in the SUPERTEXT setting)."
+msgstr "Supertext bietet für diese Sprache (%(target)s) keine formelle oder informelle Anrede an. Stellen Sie die Anrede auf Standard (politeness unter LANGUAGES in der Einstellung SUPERTEXT)."
+
+msgid "Supertext offers no formal/informal choice for this language"
+msgstr "Supertext bietet für diese Sprache keine formelle/informelle Anrede an"
+
+msgid "Supertext rejected the API key. Check that you copied the whole key, or generate a new one at supertext.com → Integrations → API (requires the Admin role). No Supertext account yet? Create one at supertext.com."
+msgstr "Supertext hat den API-Schlüssel abgelehnt. Prüfen Sie, ob Sie den ganzen Schlüssel kopiert haben, oder erstellen Sie einen neuen unter supertext.com → Integrations → API (erfordert die Rolle Admin). Noch kein Supertext-Konto? Erstellen Sie eines auf supertext.com."
+
+msgid "The API key couldn't be checked because Supertext can't be reached. The settings are saved; check again later."
+msgstr "Der API-Schlüssel konnte nicht geprüft werden, weil Supertext nicht erreichbar ist. Die Einstellungen sind gespeichert; prüfen Sie ihn später erneut."
+
+msgid "The API key couldn't be checked: Supertext answered with an error (%(status)s). The settings are saved; check again later."
+msgstr "Der API-Schlüssel konnte nicht geprüft werden: Supertext hat mit einem Fehler geantwortet (%(status)s). Die Einstellungen sind gespeichert; prüfen Sie ihn später erneut."
+
+msgid "The django CMS languages of each site, with the Supertext language and form of address they are translated with. A language whose code is not a Supertext code needs a code under LANGUAGES in the SUPERTEXT setting."
+msgstr "Die django-CMS-Sprachen jeder Website mit der Supertext-Sprache und der Anrede, mit denen sie übersetzt werden. Eine Sprache, deren Code kein Supertext-Code ist, braucht einen Code unter LANGUAGES in der Einstellung SUPERTEXT."
+
+msgid "The language %(language)s has no Supertext language yet. Ask your administrator to map it (code under LANGUAGES in the SUPERTEXT setting, e.g. de-CH)."
+msgstr "Die Sprache %(language)s ist noch keiner Supertext-Sprache zugeordnet. Bitten Sie Ihre Administratorin oder Ihren Administrator, sie zuzuordnen (code unter LANGUAGES in der Einstellung SUPERTEXT, z. B. de-CH)."
+
+msgid "checked %(time)s"
+msgstr "geprüft %(time)s"
