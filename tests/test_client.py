@@ -1,6 +1,6 @@
 import pytest
 
-from djangocms_supertext.client import SupertextClient, SupertextError, base_url_for, normalize_key, retry_delay
+from djangocms_supertext.client import SDK_VERSION, Segment, SupertextClient, SupertextError, base_url_for, normalize_key
 from tests.fake import FakeSession
 
 
@@ -45,9 +45,25 @@ def test_gives_up_after_four_retries():
     assert len(session.calls) == 5
 
 
-def test_retry_after():
-    assert retry_delay(0, "3") == 3
-    assert retry_delay(1) >= 2
+def test_segments_in_one_document():
+    session = FakeSession()
+    out = client(session).translate_segments(
+        [Segment("Hello <b>world</b>", html=True), Segment("Fish & chips\nto go"), Segment("  ")], "de", "en"
+    )
+    assert out == {0: "[de-DE] Hello <b>[de-DE] world</b>", 1: "[de-DE] Fish & chips\n[de-DE] to go"}  # blank: not sent
+    assert session.calls[0]["data"]["target_lang"] == "de-DE"  # bare target gets its region
+    assert sum(c["method"] == "POST" for c in session.calls) == 1
+
+
+def test_invalid_language_pair_names_the_codes():
+    with pytest.raises(SupertextError, match=r"does not support this language pair \(en → xx\)") as info:
+        client(FakeSession()).translate_document("<p>x</p>", "xx", "en")
+    assert info.value.code == "invalid_language_pair"
+    assert info.value.params == {"source": "en", "target": "xx"}
+
+
+def test_vendored_sdk_version():
+    assert SDK_VERSION.count(".") == 2
 
 
 def test_authentication_error():

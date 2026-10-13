@@ -13,7 +13,6 @@ requires-python = ">=3.10"
 dependencies = [
     "django-cms>=4.1",
     "requests>=2.31",
-    "beautifulsoup4>=4.12",
 ]
 classifiers = [
     "Framework :: Django",

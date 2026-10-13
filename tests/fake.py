@@ -2,8 +2,24 @@
 
 import json
 import re
+from email.parser import BytesParser
+from email.policy import HTTP
 
 import requests
+
+
+def parse_multipart(content_type, body):
+    """multipart/form-data body -> (fields, files) like requests' data= and files= arguments."""
+    message = BytesParser(policy=HTTP).parsebytes(f"Content-Type: {content_type}\r\n\r\n".encode() + body)
+    fields, files = {}, {}
+    for part in message.iter_parts():
+        name = part.get_param("name", header="content-disposition")
+        payload = part.get_payload(decode=True)
+        if part.get_filename():
+            files[name] = (part.get_filename(), payload, part.get("content-type"))
+        else:
+            fields[name] = payload.decode()
+    return fields, files
 
 
 class FakeSession(requests.Session):
@@ -17,6 +33,8 @@ class FakeSession(requests.Session):
         self.translate = translate or (lambda target, html: re.sub(r">([^<>]+)<", lambda m: f">[{target}] {m.group(1)}<" if m.group(1).strip() else m.group(0), html))
 
     def request(self, method, url, headers=None, data=None, files=None, **kwargs):
+        if isinstance(data, bytes):  # the SDK sends the multipart body itself
+            data, files = parse_multipart((headers or {}).get("Content-Type", ""), data)
         self.calls.append({"method": method, "url": url, "headers": headers or {}, "data": data, "files": files})
         if (headers or {}).get("Authorization") != "Supertext-Auth-Key test-key":
             return response(401, "bad key")

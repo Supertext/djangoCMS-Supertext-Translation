@@ -85,6 +85,7 @@ Lessons from the live API, apply them here: header `Authorization: Supertext-Aut
 - New options go in `djangocms_supertext/conf.py` **and** the settings table in `docs/INSTALLATION.md`.
 - Field rules live in `djangocms_supertext/translator.py` (`PAGE_FIELDS`) and `conf.DEFAULT_PLUGIN_FIELDS`; keep "Field rules" in `docs/DEVELOPER.md` and "What is translated" in `docs/USER_GUIDE.md` in sync.
 - Admin strings (including the error messages in `client.py`, marked with its own `gettext_noop`): update `djangocms_supertext/locale/{de,fr,it}/LC_MESSAGES/django.po` and recompile each `.mo`; `tests/test_locale.py` checks they are complete (`python -c "import polib; polib.pofile('…/django.po').save_as_mofile('…/django.mo')"`).
-- Keep `client.py` and `document.py` free of Django imports (tested on their own).
+- Keep `client.py` free of Django imports (tested on its own).
+- All Supertext API calls go through the Supertext Python SDK, shipped in `djangocms_supertext/_vendor/supertext` and wrapped by `client.py`. Never edit `_vendor/`: fix the SDK in `Supertext/Supertext-API-SDK-and-Guide` and run `scripts/vendor-sdk.sh`. Every SDK error code needs a message in `client.MESSAGES` (and the `.po` files).
 - Model changes need a migration in `djangocms_supertext/migrations` committed with the change.
 - `demo/` is the Railway demo (`railway.json` → `demo/Dockerfile`, context = repo root). Demo-only setup is `demo/site_setup/management/commands/demo_setup.py`; it only creates what's missing. Demo secrets live only in Railway variables.

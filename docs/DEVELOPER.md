@@ -25,8 +25,8 @@ _apply(): create_page_content() (new language) or update the fields; replace the
 
 | Module | Responsibility |
 | --- | --- |
-| `client.py` | Supertext AI file translation API v1 with `requests`. No Django imports; session and `sleep` injectable for tests |
-| `document.py` | Builds/parses the HTML document (BeautifulSoup): HTML segments as is, plain text escaped with `<br>` for line breaks; chunking |
+| `client.py` | Wrapper around the bundled Supertext SDK (`_vendor/supertext`): requests through `requests`, segments packed into documents below the size limit, SDK error codes turned into translatable messages. No Django imports; session and `sleep` injectable for tests |
+| `_vendor/supertext/` | Bundled copy of the Supertext Python SDK (see *Supertext SDK*). Never edit |
 | `conf.py` | `SUPERTEXT` setting + `SUPERTEXT_API_KEY` / `SUPERTEXT_API_URL`; language code → Supertext code (`de-ch` → `de-CH`) and tone; `DEFAULT_PLUGIN_FIELDS` |
 | `translator.py` | Field rules, translation, creating/replacing the target language |
 | `models.py` | `Translation` (log; custom permission `translate`) |
@@ -51,7 +51,7 @@ Each value is one `data-st-id` element, so a whole Text plugin (all its paragrap
 
 ## Supertext API protocol
 
-Shared with the WordPress plugin and every other Supertext CMS plugin:
+Shared with every Supertext plugin. Every call goes through the Supertext SDK (see *Supertext SDK*); this is what it does:
 
 1. `POST {base}translate/ai/file`: multipart with `file` (part `Content-Type` exactly `text/html`, no charset, or the API answers 415), `target_lang` (BCP-47, e.g. `de-CH`), optional `source_lang` (primary subtag only, e.g. `en`, or the pair is rejected), optional `politeness` (`more`/`less`). Returns `{file_id}`.
 2. `GET …/{file_id}/status` until `done` (`error`, `limit_exceeded`, `deleted` are terminal).
@@ -62,11 +62,19 @@ Auth header: `Authorization: Supertext-Auth-Key <key>`. The header name must be 
 
 **Rate limit:** the API limits requests per second per key (HTTP 429). The client retries a 429 up to 4 times, waiting for `Retry-After` if sent, otherwise 1, 2, 4 and 8 seconds plus jitter. Languages are translated one after the other.
 
+## Supertext SDK
+
+The protocol above, the retries, the language codes and the `data-st-id` document (plain text escaped with `<br>` for line breaks, HTML as is) come from the official Supertext Python SDK ([Supertext/Supertext-API-SDK-and-Guide](https://github.com/Supertext/Supertext-API-SDK-and-Guide)). The package ships a copy in `djangocms_supertext/_vendor/supertext/` (imported as `djangocms_supertext._vendor.supertext`, so an installed `supertext-sdk` can never clash with it); sites install nothing extra. `COMMIT` and `VERSION` there name the SDK revision; `client.SDK_VERSION` reads it.
+
+- Never edit `_vendor/`. Fix the SDK in its repository, then run `scripts/vendor-sdk.sh [ref]` (default `main`; `SDK_DIR=/path/to/clone` uses a local clone) and the tests.
+- `client.SupertextClient` keeps the package's interface (`translate_document`, `translate_segments`, `validate_api_key`) and turns every SDK error code into a `SupertextError` with a translatable template (`client.MESSAGES`). A new SDK error code needs a message there and in the three `.po` files.
+- The live API answers an unknown language (`xx-YY`) with HTTP 404 `INVALID_LANGUAGE_PAIR`; the SDK reports it as `invalid_language_pair` with both codes, shown as "Supertext does not support this language pair (en → xx-YY)".
+
 ## Language codes
 
 Supertext wants the **source** as a bare language (`en`) and the **target** as a regional code (`de-DE`, `fr-CH`, `en-US`); a bare target such as `de` is rejected with `INVALID_LANGUAGE_PAIR`. `conf.py` turns django CMS language codes into Supertext codes:
 
-- **Target** (`Options.target_code`): the `LANGUAGES` → `code` override if set, else the django CMS code. It is normalized (`de_ch`/`de-ch` → `de-CH`, `zh-hant` → `zh-Hant`, `es-419` stays); a code without region gets a default region (`regional()`): ar-SA, bg-BG, cs-CZ, da-DK, de-DE, el-GR, en-US, es-ES, et-EE, fi-FI, fr-FR, hr-HR, hu-HU, it-IT, ja-JP, ko-KR, lt-LT, lv-LV, nb-NO, nl-NL, pl-PL, pt-PT, ro-RO, ru-RU, sk-SK, sl-SI, sr-RS, sv-SE, th-TH, tr-TR, uk-UA, vi-VN, zh-CN (the same table as the Shopify app). Unknown bare codes are sent unchanged, so Supertext's error names them.
+- **Target** (`Options.target_code`): the `LANGUAGES` → `code` override if set, else the django CMS code. It is normalized (`de_ch`/`de-ch` → `de-CH`, `zh-hant` → `zh-Hant`, `es-419` stays); a code without region gets a default region (`regional()`, the SDK's `language_codes`): ar-SA, bg-BG, cs-CZ, da-DK, de-DE, el-GR, en-US, es-ES, et-EE, fi-FI, fr-FR, hr-HR, hu-HU, it-IT, ja-JP, ko-KR, lt-LT, lv-LV, nb-NO, nl-NL, pl-PL, pt-PT, ro-RO, ru-RU, sk-SK, sl-SI, sr-RS, sv-SE, th-TH, tr-TR, uk-UA, vi-VN, zh-CN (the same table in every Supertext plugin). Unknown bare codes are sent unchanged, so Supertext's error names them.
 - **Source** (`Options.source_code`): the bare language of the source's target code (`en-us` → `en`; an override's language wins). The client also strips any region before sending.
 - Translating within one language (`en` → `en-GB`) is allowed.
 
@@ -92,8 +100,8 @@ Without `DATABASE_URL` the demo uses SQLite (`demo/db.sqlite3`). To work without
 pytest
 ```
 
-- `tests/test_client.py`: the API protocol, auth header and prefix, 429 retries, errors, clean-up.
-- `tests/test_document.py`: HTML packing and parsing, line breaks, chunking, settings and language codes.
+- `tests/test_client.py`: the SDK wrapper: protocol, auth header and prefix, 429 retries, errors (language pair included), clean-up, segments in one document. `tests/fake.py` reads the SDK's multipart body back.
+- `tests/test_conf.py`: settings and language codes.
 - `tests/test_translator.py`: end to end on SQLite with a fake API: a page with Text plugins in two placeholders is translated into two languages (fields, slug, markup, tone, plugins in the right placeholders, source untouched), skip and overwrite (no duplicated plugins), per-language errors, the translate dialog as an editor (and 403 without the permission), the settings page (including the plugin version and its release link) and *Test connection*.
 - `tests/test_versioning.py` (`pytest --ds=tests.settings_versioning tests/test_versioning.py`, needs djangocms-versioning): new languages are drafts, published languages are not overwritten.
 
@@ -186,7 +194,7 @@ Publishing to PyPI (`python -m build && twine upload dist/*`) is planned.
 
 - Black-compatible formatting, type hints in new code.
 - User-visible strings via Django's gettext, translated in `djangocms_supertext/locale/{de,fr,it}/LC_MESSAGES/django.po` (English is the source). New or changed strings need all four languages in the same commit. `client.py` has no Django imports, so it marks its error messages with a local `gettext_noop` and keeps `template`/`params` on `SupertextError`; `translator.localized()` translates them for the dialog, the settings page and the log. `tests/test_locale.py` checks that every marked string is in each catalog, placeholders match and the `.mo` files are current.
-- Keep `client.py` and `document.py` free of Django imports.
+- Keep `client.py` free of Django imports.
 - Keep the three docs in `docs/` current with every change (see `CLAUDE.md`).
 
 ## Known limitations / roadmap

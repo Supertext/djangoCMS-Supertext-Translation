@@ -71,6 +71,7 @@ The Supertext dialog and its messages follow your django CMS interface language 
 | *This language is published. Create a draft of it, then translate again.* | With versioning, overwrite a draft, not the published version. |
 | *Authentication failed. Please check the Supertext API key.* | The API key is wrong. Ask your administrator. |
 | *Your Supertext translation limit is exceeded.* | Your organisation's Supertext limit is used up. |
+| *Supertext does not support this language pair (en → …).* | Supertext can't translate into this language, or its language code in the settings is wrong. Tell your administrator. |
 | *Too many requests to Supertext. Please try again shortly.* | Supertext was busy; try again in a moment. |
 | *Timed out waiting for the Supertext translation.* / *The Supertext service is currently unavailable.* | Supertext took too long or is unavailable. Try again later. |
 

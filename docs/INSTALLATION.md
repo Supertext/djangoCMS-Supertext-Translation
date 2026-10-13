@@ -145,6 +145,7 @@ Translating runs in the editor's request: a few seconds per language, up to `TIM
 | *Supertext is not set up yet* in the dialog | `SUPERTEXT_API_KEY` is not set on the server. Generate a key at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and set it. |
 | *Authentication failed. Please check the Supertext API key.* | Wrong or revoked key, or a key for another environment. Generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and use *Test connection*. |
 | *This language is published. Create a draft of it, then translate again.* | With djangocms-versioning, only drafts can be changed. Create a draft of that language (or delete the language) and translate again. |
+| *Supertext does not support this language pair (en → xx-YY)* | The django CMS language (or its `code` in `SUPERTEXT["LANGUAGES"]`) isn't one Supertext offers. Set a code such as `de-CH` or `fr`; the message shows the codes that were sent. |
 | *Too many requests to Supertext* | The API's per-second limit was hit repeatedly although the package retries. Try again shortly. |
 | *Timed out waiting for the Supertext translation* or a 502/504 from the proxy | Very long page: raise `TIMEOUT` and the web server's request timeout. |
 | A plugin's text stays in the source language | Its plugin type isn't in `PLUGIN_FIELDS`. Add it. |

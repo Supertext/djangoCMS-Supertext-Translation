@@ -223,3 +223,6 @@ msgstr "Der Supertext-Dienst ist derzeit nicht verfügbar."
 
 msgid "Supertext answered with HTTP %(code)s."
 msgstr "Supertext hat mit HTTP %(code)s geantwortet."
+
+msgid "Supertext does not support this language pair (%(source)s → %(target)s). Check the language codes in the LANGUAGES option."
+msgstr "Supertext unterstützt dieses Sprachpaar nicht (%(source)s → %(target)s). Prüfen Sie die Sprachcodes in der Option LANGUAGES."

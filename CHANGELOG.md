@@ -6,8 +6,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Its own message for an unsupported language pair, naming the codes ("Supertext does not support this language pair (en → xx-YY)"), in English, German, French and Italian.
 - French and Italian interface (and German where it was missing): the dialog, settings page, log and all Supertext error messages follow the user's interface language.
 - The settings page shows the installed plugin version, linked to its release notes on GitHub.
+
+### Changed
+
+- All Supertext API calls now go through the official Supertext Python SDK, shipped inside the package (nothing extra to install). The `beautifulsoup4` dependency is gone.
 
 ### Fixed
 

@@ -1,20 +1,6 @@
+"""Settings and language codes (conf.py)."""
+
 from djangocms_supertext import conf
-from djangocms_supertext.document import Segment, build, chunks, parse
-
-
-def test_round_trip_keeps_markup_and_line_breaks():
-    segments = [Segment("Fish & chips\nsecond line"), Segment("<p>Hello <b>world</b></p>", html=True)]
-    document = build(segments)
-    assert '<div data-st-id="0">Fish &amp; chips<br>second line</div>' in document
-    assert parse(document, segments) == {0: "Fish & chips\nsecond line", 1: "<p>Hello <b>world</b></p>"}
-
-
-def test_ignores_unknown_ids():
-    assert parse('<div data-st-id="7">x</div><div data-st-id="a">y</div>', [Segment("a")]) == {}
-
-
-def test_chunks():
-    assert chunks([Segment("aaaaaa"), Segment("bbbbbb"), Segment("ccc")], 10) == [[0], [1, 2]]
 
 
 def test_language_codes_and_settings(monkeypatch):

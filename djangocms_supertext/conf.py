@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from ._vendor.supertext import language_codes
 from .client import API_KEY_URL, SIGNUP_URL, SupertextClient, base_url_for, normalize_key  # noqa: F401 (URLs re-exported)
 
 
@@ -76,27 +77,19 @@ def bcp47(language_code: str) -> str:
     return "-".join(out)
 
 
-# The region Supertext uses when a language code has none. Supertext rejects bare
-# targets such as "de" (INVALID_LANGUAGE_PAIR); the source is sent without region.
-DEFAULT_REGION = {
-    "ar": "ar-SA", "bg": "bg-BG", "cs": "cs-CZ", "da": "da-DK", "de": "de-DE", "el": "el-GR",
-    "en": "en-US", "es": "es-ES", "et": "et-EE", "fi": "fi-FI", "fr": "fr-FR", "hr": "hr-HR",
-    "hu": "hu-HU", "it": "it-IT", "ja": "ja-JP", "ko": "ko-KR", "lt": "lt-LT", "lv": "lv-LV",
-    "nb": "nb-NO", "nl": "nl-NL", "pl": "pl-PL", "pt": "pt-PT", "ro": "ro-RO", "ru": "ru-RU",
-    "sk": "sk-SK", "sl": "sl-SI", "sr": "sr-RS", "sv": "sv-SE", "th": "th-TH", "tr": "tr-TR",
-    "uk": "uk-UA", "vi": "vi-VN", "zh": "zh-CN",
-}
+# The region Supertext uses when a language code has none (the Supertext SDK's table).
+# Supertext rejects bare targets such as "de" (INVALID_LANGUAGE_PAIR); the source is sent without region.
+DEFAULT_REGION = language_codes.DEFAULT_REGIONS
 
 
 def regional(language_code: str) -> str:
     """Target code: de -> de-DE, de_ch -> de-CH, zh-hant -> zh-Hant; unknown bare codes unchanged."""
-    code = bcp47(language_code.strip())
-    return code if "-" in code else DEFAULT_REGION.get(code, code)
+    return language_codes.target(language_code.strip())
 
 
 def bare(language_code: str) -> str:
     """Source code: the language without region (en-US -> en)."""
-    return bcp47(language_code.strip()).split("-")[0]
+    return language_codes.source(language_code.strip())
 
 
 def load(options: dict | None = None) -> Options:

@@ -18,9 +18,8 @@ from dataclasses import dataclass, field
 from django.db import transaction
 from django.utils.translation import gettext as _
 
-from . import conf, document
-from .client import MAX_DOCUMENT_CHARACTERS, SupertextClient, SupertextError
-from .document import Segment
+from . import conf
+from .client import Segment, SupertextClient, SupertextError
 
 logger = logging.getLogger(__name__)
 
@@ -172,21 +171,13 @@ def _collect(page, language: str, options: conf.Options) -> _Source | None:
 
 
 def _translate(client: SupertextClient, units: list[_Unit], source: str, target: str, options: conf.Options) -> dict[int, str]:
-    segments = [Segment(unit.value, unit.kind == "html") for unit in units]
-    translated: dict[int, str] = {}
-    for group in document.chunks(segments, MAX_DOCUMENT_CHARACTERS):
-        part = [segments[i] for i in group]
-        if not part:
-            continue
-        html = client.translate_document(
-            document.build(part),
-            target_language=options.target_code(target),
-            source_language=options.source_code(source),
-            politeness=options.politeness(target),
-        )
-        for position, value in document.parse(html, part).items():
-            translated[group[position]] = value
-    return translated
+    segments = [Segment(unit.value, html=unit.kind == "html") for unit in units]
+    return client.translate_segments(
+        segments,
+        target_language=options.target_code(target),
+        source_language=options.source_code(source),
+        politeness=options.politeness(target),
+    )
 
 
 def _check_editable(content) -> None:
