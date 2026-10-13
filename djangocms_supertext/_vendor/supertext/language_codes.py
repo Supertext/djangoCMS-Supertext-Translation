@@ -23,16 +23,42 @@ DEFAULT_REGIONS: Final[Mapping[str, str]] = {
 _VALID = re.compile(r"[a-z]{2,3}(-[A-Z][a-z]{3})?(-([A-Z]{2}|[0-9]{3}))?")
 
 
+def _is_letters(part: str, length: int) -> bool:
+    return len(part) == length and part.isascii() and part.isalpha()
+
+
+def _is_region(part: str) -> bool:
+    return _is_letters(part, 2) or (len(part) == 3 and part.isascii() and part.isdigit())
+
+
+def _title(part: str) -> str:
+    return part[:1].upper() + part[1:].lower()
+
+
 def normalize(code: str) -> str:
-    """``" de_ch "`` → ``de-CH``, ``zh_hant_tw`` → ``zh-Hant-TW``; other subtags (``419``) unchanged."""
+    """``" de_ch "`` → ``de-CH``, ``zh_hant_tw`` → ``zh-Hant-TW``; ``419`` unchanged.
+
+    Variants and extensions after a script or region are dropped (``de_DE_formal`` → ``de-DE``,
+    ``en-US-x-twain`` → ``en-US``). A code whose second subtag is neither a script nor a region
+    is kept (``de-CHE``) and isn't valid.
+    """
     parts = code.strip().replace("_", "-").split("-")
     out = [parts[0].lower()]
-    for part in parts[1:]:
-        letters = part.isascii() and part.isalpha()
-        if len(part) == 2 and letters:
+    rest = parts[1:]
+    nxt = 0
+    if nxt < len(rest) and _is_letters(rest[nxt], 4):
+        out.append(_title(rest[nxt]))
+        nxt += 1
+    if nxt < len(rest) and _is_region(rest[nxt]):
+        out.append(rest[nxt].upper())
+        nxt += 1
+    if nxt > 0:
+        return "-".join(out)
+    for part in rest:
+        if _is_letters(part, 2):
             out.append(part.upper())
-        elif len(part) == 4 and letters:
-            out.append(part[:1].upper() + part[1:].lower())
+        elif _is_letters(part, 4):
+            out.append(_title(part))
         else:
             out.append(part)
     return "-".join(out)

@@ -17,6 +17,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - Languages without a region (e.g. `de`, `fr`) are now sent to Supertext as `de-DE`, `fr-FR` (Supertext rejects targets without region).
+- Language codes with a variant or extension, such as `de_DE_formal` or `en-us-x-twain`, are sent to Supertext as `de-DE`, `en-US`.
 
 ### Changed
 

@@ -24,6 +24,8 @@ def test_supertext_language_codes():
     assert options.target_code("pt-br") == "pt-BR"
     assert options.target_code("zh-hant") == "zh-Hant"
     assert options.target_code("es-419") == "es-419"
+    assert options.target_code("en-us-x-twain") == "en-US"  # variants and extensions dropped
+    assert options.target_code("de_DE_formal") == "de-DE"
     assert options.target_code("xx") == "xx"  # unknown: sent unchanged
     # The override wins (normalized).
     assert options.target_code("de") == "de-CH"
