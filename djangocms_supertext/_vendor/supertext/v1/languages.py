@@ -181,7 +181,9 @@ def source(code: str, mapping: LanguageMapping | None = None) -> str:
     """
     if not code.strip():
         return ""
-    result = _mapped(code, mapping) or match_source(code)
+    # One mapping serves both directions: a mapped target code is sent in its source form (de-CH -> de).
+    from_mapping = _mapped(code, mapping)
+    result = (match_source(from_mapping) or from_mapping) if from_mapping else match_source(code)
     if result is None:
         raise SupertextError(ErrorCode.UNSUPPORTED_LANGUAGE, source_lang=code.strip())
     return result

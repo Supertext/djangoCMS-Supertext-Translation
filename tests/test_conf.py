@@ -49,6 +49,7 @@ def test_mapping_wins():
 
 def test_source_codes():
     options = conf.load({"LANGUAGES": {"de": {"code": "de-CH"}, "ch": {"code": "gsw-u-sd-chzh"}}})
+    assert options.target_code("de") == "de-CH"  # one mapping for both directions
     assert options.source_code("en") == "en"
     assert options.source_code("en-gb") == "en"
     assert options.source_code("de") == "de"  # from its mapping de-CH
@@ -56,6 +57,12 @@ def test_source_codes():
     with pytest.raises(SupertextError) as info:
         options.source_code("xx")
     assert info.value.code == "unsupported_language" and info.value.params == {"language": "xx"}
+
+
+def test_english_source_with_en_us_mapping():
+    options = conf.load({"LANGUAGES": {"en": {"code": "en-US"}}})
+    assert options.target_code("en") == "en-US"
+    assert options.source_code("en") == "en"
 
 
 def test_version_reports_setting(monkeypatch):

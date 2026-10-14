@@ -27,6 +27,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - The "No Supertext API key" and "Authentication failed" messages from the API client now link to account signup and API key generation.
 
+### Fixed
+
+- Supertext SDK 0.2.1 (commit `eeba8fa`): one `LANGUAGES` mapping serves both directions. A mapped language is sent as a source in its source form (`"de": {"code": "de-CH"}` translates from `de`), so English as the source no longer fails with an `en-US` mapping.
+
 ## 0.1.0 — 2026-10-07
 
 ### Added

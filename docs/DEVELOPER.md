@@ -79,7 +79,7 @@ Supertext accepts exactly the codes its `GET features` lists (the SDK's `Languag
 `conf.py` turns django CMS language codes into Supertext codes **without guessing**:
 
 - **Target** (`Options.target_code`): the `LANGUAGES` → `code` mapping (sent as it is), else a django CMS code that equals a Supertext code apart from case and `_`/`-` (`de-ch` → `de-CH`, `es`), else `SupertextError` `unsupported_language` with `%(language)s`. `translator.translate_page` reports it for that language and sends nothing for it. `de`, `en` or `zh-cn` must be mapped.
-- **Source** (`Options.source_code`): the bare language of the mapping or code (`en-us` → `en`, a mapped `de` → `de-CH` → `de`), else `unsupported_language`.
+- **Source** (`Options.source_code`): the SDK's `Languages.source()` with the same mapping, which sends a mapped value in its source form (a mapped `de` → `de-CH` translates from `de`; one mapping for both directions), else the code's language (`en-us` → `en`), else `unsupported_language`.
 - **Politeness**: `client.translate_document` refuses `more`/`less` for a target whose `Languages.supports_politeness()` is `False` before sending (`unsupported_feature`), so the admin's setting is never silently dropped; the settings page warns about it.
 - The settings page shows each language's code, *Not mapped* for the others, and the full `Languages.TARGETS` list.
 
