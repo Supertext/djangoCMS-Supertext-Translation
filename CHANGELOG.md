@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Support for Python 3.14 (tested in CI with django CMS 5.1 and Django 6).
 - Automatic API key check: when the key is new or changed, on *Test connection*, in `supertext_check` and when Supertext rejects the key during a translation. The settings page shows the latest result with its time (*the connection works*, *rejected*, *no key*, *Supertext can't be reached*, *error*), with links to create an account and generate a key, in English, German, French and Italian.
 - *Send version information to Supertext* (on by default; `"VERSION_REPORTS": False` in `SUPERTEXT` or `SUPERTEXT_VERSION_REPORTS=0` turns it off): after an update and when the key check result changes, the package sends the site URL, the package, django CMS, Python and SDK versions, whether a key is set, the key check result and the ping address to Supertext. No content, no API key and no personal data. Shown on the settings page. New option `SITE_URL` for the site's public address.
 - Public ping endpoint `<admin>/djangocms_supertext/translation/ping/` (optionally `/supertext/ping` with `include("djangocms_supertext.urls")`) that only echoes Supertext's challenge, so Supertext can check the site is reachable (404 with version reports off).

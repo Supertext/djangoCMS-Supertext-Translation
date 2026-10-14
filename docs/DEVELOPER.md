@@ -125,7 +125,7 @@ pytest
 
 CI (`.github/workflows/ci.yml`) on every push and pull request:
 
-- **test**: the suite on Python 3.11 with django CMS 4.x and Django 4.2, 3.12 with django CMS 5.0 and Django 5.2, 3.13 with django CMS 5.1 and Django 6 (plus the versioning test).
+- **test**: the suite on Python 3.11 with django CMS 4.x and Django 4.2, 3.12 with django CMS 5.0 and Django 5.2, 3.13 with django CMS 5.1 and Django 6 (plus the versioning test), and 3.14 with django CMS 5.1 and Django 6.
 - **demo**: builds the demo image, starts it twice against PostgreSQL with the stand-in (`tests/demo-check.sh`): demo accounts created once and never duplicated, no passwords in the log, the editor's permissions, `supertext_check`, the public ping and the `installed` and `check` reports the stand-in received (`GET /reports`; never the key), translation of the sample page into three languages, the skip on a second run, and the German and French pages with their translated slugs and markup.
 
 ## Demo (Railway)

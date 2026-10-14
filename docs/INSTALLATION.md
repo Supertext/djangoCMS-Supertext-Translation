@@ -4,7 +4,7 @@ For administrators and developers who install and set up the package. Editors fi
 
 ## Requirements
 
-- django CMS 4.1 or later (tested with 5.1), Django 4.2 or later, Python 3.10 or later
+- django CMS 4.1 or later (tested with 5.1), Django 4.2 or later, Python 3.10 or later (tested up to 3.14)
 - More than one language in `LANGUAGES` / `CMS_LANGUAGES`
 - [djangocms-text](https://github.com/django-cms/djangocms-text) (or another text plugin with a `body` field) for rich text
 - A Supertext account ([log in or create one](https://www.supertext.com/person/en/account/signin)) and an API key from [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (see [API key](#api-key))
