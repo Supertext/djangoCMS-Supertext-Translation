@@ -25,6 +25,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Version reports, the API key check result and the reachability ping now use Supertext Plugin Health 0.1.0 (bundled in `djangocms_supertext/_vendor/plugin_health`); Supertext SDK updated to 0.3.0 (commit `f7bd414`). No change for sites: settings and stored state stay as they are.
 - The "No Supertext API key" and "Authentication failed" messages from the API client now link to account signup and API key generation.
 
 ### Fixed

@@ -1,5 +1,5 @@
-"""This SDK's version (sent in version reports; must equal ``version`` in pyproject.toml)."""
+"""This SDK's version (passed to Supertext Plugin Health as ``sdk_version``; equals ``version`` in pyproject.toml)."""
 
 from typing import Final
 
-SDK_VERSION: Final = "0.2.1"
+SDK_VERSION: Final = "0.3.0"

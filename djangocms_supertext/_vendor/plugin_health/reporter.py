@@ -1,9 +1,10 @@
-"""Version reports to the Supertext Commando Center, the automatic API key check and the callback ping.
+"""Version reports to the Supertext Commando Center, the API key check result and the ping endpoint.
 
-Behaviour: spec/reporting.json (protocol: Commando-Center-Supertext-Translation → docs/DEVELOPER.md →
-Report protocol). The reporter is stateless: the plugin loads its :class:`ReporterState` (stored as
-JSON, see :meth:`ReporterState.to_json` and :func:`reporter_state`), passes it in, and stores the state
-it gets back. Nothing here ever raises because the center is unreachable: it is optional.
+Behaviour: ../spec/reporter.json (protocol: the Commando Center's docs/DEVELOPER.md → Report protocol).
+The reporter is stateless: the plugin loads its :class:`ReporterState` (stored as JSON, see
+:meth:`ReporterState.to_json` and :func:`reporter_state`), passes it in, and stores the state it gets
+back. It never talks to Supertext itself: the plugin passes a :class:`KeyChecker` built on the
+Supertext SDK. Nothing here ever raises: the center is optional.
 """
 
 from __future__ import annotations
@@ -17,15 +18,13 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, Final, Literal, Union
 
-from ..transport import HttpRequest, Transport, UrllibTransport
-from ..version import SDK_VERSION
-from .api_key_check import KEY_CHECK_TIMEOUT, ApiKeyCheck, api_key_fingerprint, iso_seconds, parse_iso
-from .client import SupertextClient
+from .key_check import KeyCheck, KeyChecker, iso_seconds, parse_iso
+from .transport import HttpRequest, Transport, UrllibTransport
+from .version import PLUGIN_HEALTH_VERSION
 
 __all__ = [
     "DEFAULT_REPORT_URL",
     "FAILURE_BACKOFF",
-    "KEY_CHECK_TIMEOUT",
     "REPORT_TIMEOUT",
     "InstallationReporter",
     "NameVersion",
@@ -50,10 +49,10 @@ StateInput = Union["ReporterState", Mapping[str, Any], str, bytes, None]
 
 ReportEvent = Literal["installed", "settings_saved", "upgraded", "api_key_check", "check"]
 
-_USER_AGENT: Final = "supertext-sdk-python"
 _CHALLENGE = re.compile(r"[A-Za-z0-9_-]{16,64}")
 _OFF: Final = ("0", "false", "off", "no")
 _ON: Final = ("1", "true", "on", "yes")
+_PING_HEADERS: Final = {"Content-Type": "application/json", "Cache-Control": "no-store"}
 
 
 @dataclass(frozen=True)
@@ -66,9 +65,9 @@ class NameVersion:
 class ReporterState:
     """What the plugin stores between requests.
 
-    Store ``to_json()`` (or ``to_dict()``) as it is and read it back with :func:`reporter_state`:
-    the camelCase shape (``reportedVersions``, ``reportedKeyStatus``, ``lastFailureAt``, ``keyCheck``)
-    is the same in every Supertext SDK.
+    Store ``to_json()`` (or ``to_dict()``) as it is and read it back with :func:`reporter_state`. The
+    camelCase shape (``reportedVersions``, ``reportedKeyStatus``, ``lastFailureAt``, ``keyCheck``) is the
+    same in every language and the same the Supertext SDK 0.1 to 0.2 reporter stored.
     """
 
     reported_versions: str | None = None
@@ -77,7 +76,7 @@ class ReporterState:
     """The key status last reported successfully."""
     last_failure_at: str | None = None
     """When the last report failed (no new attempt for an hour)."""
-    key_check: ApiKeyCheck | None = None
+    key_check: KeyCheck | None = None
     """The latest key check."""
 
     def to_dict(self) -> dict[str, Any]:
@@ -96,7 +95,7 @@ class ReporterState:
 class ReporterResult:
     state: ReporterState
     """Store this."""
-    check: ApiKeyCheck | None
+    check: KeyCheck | None
     """The latest key check (show it on the settings or status page)."""
     event: ReportEvent | None
     """The event that was reported (or tried); ``None`` when nothing was due."""
@@ -130,13 +129,8 @@ def reporter_state(value: object) -> ReporterState:
         item = data.get(name)
         return item if isinstance(item, str) else None
 
-    key_check: ApiKeyCheck | None = None
     raw_check = data.get("keyCheck")
-    if isinstance(raw_check, Mapping):
-        try:
-            key_check = ApiKeyCheck.from_dict(raw_check)
-        except ValueError:
-            key_check = None
+    key_check = KeyCheck.from_value(raw_check) if isinstance(raw_check, Mapping) else None
     return ReporterState(text("reportedVersions"), text("reportedKeyStatus"), text("lastFailureAt"), key_check)
 
 
@@ -168,25 +162,25 @@ def ping_response(challenge: str | None, plugin: str, enabled: bool) -> PingResp
     """The answer of the plugin's public ping endpoint (``GET <callback>?challenge=<c>``).
 
     Only while reporting is on (else 404). The challenge is echoed only if it matches
-    ``^[A-Za-z0-9_-]{16,64}$`` (else 400).
+    ``^[A-Za-z0-9_-]{16,64}$`` (else 400). Answer with ``status``, ``headers`` and ``body`` as they are.
     """
-    headers = {"Content-Type": "application/json", "Cache-Control": "no-store"}
     if not enabled:
-        return PingResponse(404, headers, '{"ok":false}')
+        return PingResponse(404, dict(_PING_HEADERS), '{"ok":false}')
     if not isinstance(challenge, str) or not _CHALLENGE.fullmatch(challenge):
-        return PingResponse(400, headers, '{"ok":false}')
+        return PingResponse(400, dict(_PING_HEADERS), '{"ok":false}')
     body = json.dumps({"ok": True, "plugin": plugin, "challenge": challenge}, separators=(",", ":"))
-    return PingResponse(200, headers, body)
+    return PingResponse(200, dict(_PING_HEADERS), body)
 
 
 class InstallationReporter:
     """Reports versions and the API key status to the Supertext Commando Center.
 
-    ``plugin.name`` is the plugin's GitHub repository name, ``plugin.version`` comes from its
-    official version source; ``system`` is the CMS, PIM, shop or application in its own spelling.
-    ``transport`` sends the report (and the key check, unless ``client_options`` brings its own);
-    ``client_options`` go to the :class:`~supertext.v1.SupertextClient` of the key check (``base_url``, ``sleep``, …).
-    ``now`` is the Unix time in seconds. None of the methods ever raises.
+    ``plugin.name`` is the plugin's GitHub repository name, ``plugin.version`` comes from its official
+    version source; ``system`` is the CMS, PIM, shop or application in its own spelling. ``key_checker``
+    is the bundled SDK's key check (see :class:`KeyChecker`), ``sdk_version`` the SDK's ``SDK_VERSION``
+    (``None``: no ``sdk_version`` in the report). ``callback_url`` is the plugin's public ping endpoint
+    (``None`` for hosted apps). ``transport`` sends the report; ``now`` is the Unix time in seconds.
+    None of the methods ever raises.
     """
 
     def __init__(
@@ -196,28 +190,33 @@ class InstallationReporter:
         site_url: str,
         plugin: NameVersion,
         system: NameVersion,
-        runtime: NameVersion | None = None,
+        key_checker: KeyChecker,
         sdk_version: str | None = None,
+        runtime: NameVersion | None = None,
         callback_url: str | None = None,
         report_url: str | None = None,
         transport: Transport | None = None,
-        client_options: Mapping[str, Any] | None = None,
         now: Callable[[], float] = time.time,
     ) -> None:
-        self.enabled = enabled
+        self._enabled = enabled
         self.site_url = site_url
         self.plugin = plugin
         self.system = system
+        self.key_checker = key_checker
+        self.sdk_version = sdk_version
         self.runtime = runtime or NameVersion("Python", platform.python_version())
-        self.sdk_version = sdk_version or SDK_VERSION
         self.callback_url = callback_url
         self.report_url = report_url or os.environ.get("SUPERTEXT_REPORT_URL") or DEFAULT_REPORT_URL
         self._transport: Transport = transport or UrllibTransport()
-        self._client_options: dict[str, Any] = dict(client_options or {})
         self._now = now
 
     def __repr__(self) -> str:
         return f"InstallationReporter(plugin={self.plugin.name!r}, report_url={self.report_url!r})"
+
+    @property
+    def enabled(self) -> bool:
+        """Whether reports are sent (the ping endpoint answers only then)."""
+        return self._enabled
 
     @property
     def versions(self) -> str:
@@ -234,13 +233,13 @@ class InstallationReporter:
     def on_request(self, state: StateInput, api_key: str | None) -> ReporterResult:
         """On back-end requests that run the plugin's code: checks a changed key, reports what changed."""
         current = reporter_state(state)
-        if current.key_check is None or current.key_check.fingerprint != api_key_fingerprint(api_key):
+        if current.key_check is None or current.key_check.fingerprint != self._fingerprint(api_key):
             current = replace(current, key_check=self._check(api_key))
         return self._report_if_due(current, self._due_event(current))
 
     def authentication_failed(self, state: StateInput, api_key: str | None, http_status: int = 401) -> ReporterResult:
-        """A translation was rejected with 401/403: the key is invalid (no request to Supertext)."""
-        check = ApiKeyCheck("invalid", iso_seconds(self._now()), http_status, None, api_key_fingerprint(api_key))
+        """A translation was rejected with 401/403: the key is invalid (no check against Supertext)."""
+        check = KeyCheck("invalid", iso_seconds(self._now()), http_status, None, self._fingerprint(api_key))
         current = replace(reporter_state(state), key_check=check)
         return self._report_if_due(current, self._due_event(current))
 
@@ -254,7 +253,7 @@ class InstallationReporter:
         return self._send(reporter_state(state), "check")
 
     def build_report(self, event: ReportEvent, state: StateInput) -> dict[str, Any]:
-        """The report body for an event and state (the key itself is never part of it)."""
+        """The report body for an event and state (neither the key nor its fingerprint is part of it)."""
         current = reporter_state(state)
         body: dict[str, Any] = {
             "schema": 1,
@@ -263,8 +262,9 @@ class InstallationReporter:
             "plugin": {"name": self.plugin.name, "version": self.plugin.version or ""},
             "system": _name_version(self.system),
             "runtime": _name_version(self.runtime),
-            "sdk_version": self.sdk_version,
         }
+        if self.sdk_version:
+            body["sdk_version"] = self.sdk_version
         check = current.key_check
         if check is not None:
             body["api_key_configured"] = check.fingerprint != ""
@@ -289,15 +289,24 @@ class InstallationReporter:
             return "api_key_check"
         return None
 
-    def _check(self, api_key: str | None) -> ApiKeyCheck:
-        options: dict[str, Any] = {"transport": self._transport, **self._client_options, "now": self._now}
+    def _fingerprint(self, api_key: str | None) -> str:
         try:
-            return SupertextClient(api_key, **options).check_api_key()
-        except Exception:  # e.g. a bad client option: still never fail the caller
-            return ApiKeyCheck("error", iso_seconds(self._now()), None, None, api_key_fingerprint(api_key))
+            fingerprint = self.key_checker.fingerprint(api_key or "")
+        except Exception:  # the SDK's never raises; a plugin's own might
+            return ""
+        return fingerprint if isinstance(fingerprint, str) else ""
+
+    def _check(self, api_key: str | None) -> KeyCheck:
+        try:
+            check = KeyCheck.from_value(self.key_checker.check(api_key or ""))
+            if check is not None:
+                return check
+        except Exception:  # the SDK's check never raises; a plugin's own checker might
+            pass
+        return KeyCheck("error", iso_seconds(self._now()), None, None, self._fingerprint(api_key))
 
     def _report_if_due(self, state: ReporterState, event: ReportEvent | None) -> ReporterResult:
-        if event is None or not self.enabled:
+        if event is None or not self._enabled:
             return ReporterResult(state, state.key_check, None, False)
         if state.last_failure_at is not None:
             failed = parse_iso(state.last_failure_at)
@@ -306,7 +315,7 @@ class InstallationReporter:
         return self._send(state, event)
 
     def _send(self, state: ReporterState, event: ReportEvent) -> ReporterResult:
-        if not self.enabled:
+        if not self._enabled:
             return ReporterResult(state, state.key_check, None, False)
         ok = False
         try:
@@ -314,7 +323,10 @@ class InstallationReporter:
             headers = {
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "User-Agent": f"{_USER_AGENT} {self.plugin.name}/{self.plugin.version or ''}",
+                "User-Agent": (
+                    f"supertext-plugin-health/{PLUGIN_HEALTH_VERSION} (python) "
+                    f"{self.plugin.name}/{self.plugin.version or ''}"
+                ),
             }
             response = self._transport(HttpRequest("POST", self.report_url, headers, body, REPORT_TIMEOUT))
             ok = 200 <= response.status < 300

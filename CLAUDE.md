@@ -79,7 +79,7 @@ AI file translation API v1, same as the WordPress plugin: POST HTML file → pol
 
 Lessons from the live API, apply them here: header `Authorization: Supertext-Auth-Key <key>` (strip a pasted prefix), retry HTTP 429 (per-second rate limit), keep a whole text in one `data-st-id` element (each one is translated on its own), and use only the codes Supertext's `GET features` lists (the SDK's `Languages`, `_vendor.supertext.v1`): bare sources (`en`); targets regional only for de/en/fr/it/pt (`de-CH`, `en-US`), `zh-Hans`/`zh-Hant`, `sr-Latn`/`sr-Cyrl`, `gsw-u-sd-chzh`/`chbe`, bare for the rest (`es`, `nl`, `sl`). **No guessing:** the plugin's mapping (`code` under `SUPERTEXT["LANGUAGES"]`), else an exact match, else the error `unsupported_language`. No default regions (see `docs/DEVELOPER.md` → *Language codes*).
 
-Commando Center (version reports, API key check, ping): `djangocms_supertext/reporting.py` on top of the SDK's `InstallationReporter`; never reimplement the protocol, never let it break a page or a translation (see `docs/DEVELOPER.md` → *Commando Center*).
+Commando Center (version reports, API key check, ping): `djangocms_supertext/reporting.py` on top of Supertext Plugin Health's `InstallationReporter` (bundled in `djangocms_supertext/_vendor/plugin_health`) with the SDK's `check_api_key` as the key check; never reimplement the protocol, never let it break a page or a translation (see `docs/DEVELOPER.md` → *Commando Center*).
 
 ## This repo
 
@@ -88,6 +88,6 @@ Commando Center (version reports, API key check, ping): `djangocms_supertext/rep
 - Field rules live in `djangocms_supertext/translator.py` (`PAGE_FIELDS`) and `conf.DEFAULT_PLUGIN_FIELDS`; keep "Field rules" in `docs/DEVELOPER.md` and "What is translated" in `docs/USER_GUIDE.md` in sync.
 - Admin strings (including the error messages in `client.py`, marked with its own `gettext_noop`): update `djangocms_supertext/locale/{de,fr,it}/LC_MESSAGES/django.po` and recompile each `.mo`; `tests/test_locale.py` checks they are complete (`python -c "import polib; polib.pofile('…/django.po').save_as_mofile('…/django.mo')"`).
 - Keep `client.py` free of Django imports (tested on its own).
-- All Supertext API calls go through the Supertext Python SDK, shipped in `djangocms_supertext/_vendor/supertext` and wrapped by `client.py`. Never edit `_vendor/`: fix the SDK in `Supertext/Supertext-API-SDK-and-Guide` and run `scripts/vendor-sdk.sh`. Every SDK error code needs a message in `client.MESSAGES` (and the `.po` files).
+- All Supertext API calls go through the Supertext Python SDK, shipped in `djangocms_supertext/_vendor/supertext` and wrapped by `client.py`. Never edit `_vendor/`: fix the SDK in `Supertext/Supertext-API-SDK-and-Guide` and run `scripts/vendor-sdk.sh`; the Plugin Health copy (`_vendor/plugin_health`) the same way: fix it in `Supertext/Commando-Center-Supertext-Translation` → `plugin-health/` and run `scripts/vendor-plugin-health.sh <tag>`. Every SDK error code needs a message in `client.MESSAGES` (and the `.po` files).
 - Model changes need a migration in `djangocms_supertext/migrations` committed with the change.
 - `demo/` is the Railway demo (`railway.json` → `demo/Dockerfile`, context = repo root). Demo-only setup is `demo/site_setup/management/commands/demo_setup.py`; it only creates what's missing. Demo secrets live only in Railway variables.

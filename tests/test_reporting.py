@@ -14,7 +14,9 @@ from django.utils import translation
 
 from djangocms_supertext import __version__, admin as st_admin, conf, reporting
 from djangocms_supertext.models import State
-from djangocms_supertext._vendor.supertext.v1 import ApiKeyCheck
+from djangocms_supertext._vendor import plugin_health
+from djangocms_supertext._vendor.plugin_health import KeyCheck as ApiKeyCheck
+from djangocms_supertext._vendor.supertext import SDK_VERSION
 
 pytestmark = pytest.mark.django_db
 
@@ -43,6 +45,7 @@ def test_settings_page_reports_installed_once(admin_client, no_live_services):
     assert report["plugin"] == {"name": "djangoCMS-Supertext-Translation", "version": __version__}
     assert report["system"]["name"] == "django CMS" and report["system"]["version"]
     assert report["runtime"]["name"] == "Python"
+    assert report["sdk_version"] == SDK_VERSION
     assert report["api_key_configured"] is True and report["api_key_check"]["status"] == "ok"
     assert report["callback"] == {"url": "http://testserver" + PING}
     assert "test-key" not in json.dumps(report)
@@ -55,6 +58,34 @@ def test_settings_page_reports_installed_once(admin_client, no_live_services):
     response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
     assert len(no_live_services.reports) == 1 and len(no_live_services.calls) == calls
     assert b'data-supertext-key-check="ok"' in response.content and b"checked " in response.content
+
+
+def test_state_stored_by_the_sdk_reporter_is_kept(admin_client, no_live_services):
+    # Stored by the Supertext SDK 0.1-0.2 reporter (same row, same JSON): no new installed report.
+    import platform
+
+    from djangocms_supertext._vendor.supertext.v1 import api_key_fingerprint
+
+    versions = f"{__version__}|{reporting.django_cms_version()}|{platform.python_version()}"
+    old = {
+        "reportedVersions": versions,
+        "reportedKeyStatus": "ok",
+        "lastFailureAt": None,
+        "keyCheck": {"status": "ok", "checkedAt": "2026-10-01T08:00:00Z", "httpStatus": 200, "errorCode": None, "fingerprint": api_key_fingerprint("test-key")},
+    }
+    State.objects.create(key="reporter", value=json.dumps(old, separators=(",", ":")))
+    response = admin_client.get(reverse("admin:djangocms_supertext_settings"))
+    assert b'data-supertext-key-check="ok"' in response.content
+    assert no_live_services.reports == [] and state() == old
+
+
+def test_bundled_plugin_health_and_sdk():
+    from pathlib import Path
+
+    vendor = Path(reporting.__file__).parent / "_vendor"
+    assert (vendor / "plugin_health" / "VERSION").read_text().strip() == plugin_health.PLUGIN_HEALTH_VERSION
+    assert (vendor / "supertext" / "VERSION").read_text().strip() == SDK_VERSION
+    assert not hasattr(__import__("djangocms_supertext._vendor.supertext.v1", fromlist=["v1"]), "InstallationReporter")
 
 
 def test_upgrade_is_reported(admin_client, no_live_services, monkeypatch):

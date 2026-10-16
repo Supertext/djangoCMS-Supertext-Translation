@@ -22,6 +22,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from ._vendor import plugin_health
 from ._vendor.supertext import v1 as sdk
 from .client import API_KEY_URL, SIGNUP_URL, Languages, SupertextClient, SupertextError, base_url_for, normalize_key  # noqa: F401 (URLs re-exported)
 
@@ -61,7 +62,7 @@ class Options:
     @property
     def reports_enabled(self) -> bool:
         """*Send version information to Supertext*: SUPERTEXT_VERSION_REPORTS wins over VERSION_REPORTS (default on)."""
-        return sdk.reports_enabled(self.version_reports)
+        return plugin_health.reports_enabled(self.version_reports)
 
     @property
     def reports_from_environment(self) -> bool:

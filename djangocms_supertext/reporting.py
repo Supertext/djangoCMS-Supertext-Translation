@@ -2,8 +2,9 @@
 Version reports to the Supertext Commando Center, the automatic API key check and the callback
 ping (Commando-Center-Supertext-Translation → docs/DEVELOPER.md → Report protocol).
 
-The protocol is the SDK's (``InstallationReporter``, ``ping_response``, ``reports_enabled``); this
-module only gives it what django CMS knows: the site URL, the django CMS and package versions, the
+The protocol is Supertext Plugin Health's (``_vendor/plugin_health``: ``InstallationReporter``,
+``ping_response``, ``reports_enabled``), the key check the Supertext SDK's (``check_api_key``); this
+module only gives them what django CMS knows: the site URL, the django CMS and package versions, the
 ping URL, and a place for the reporter's state (the ``State`` row ``reporter``).
 
 The settings live in Django's settings file, so there is no "settings saved": the key check runs
@@ -23,7 +24,22 @@ from django.utils.safestring import SafeString, mark_safe
 from django.utils.translation import gettext as _
 
 from . import __version__, conf
-from ._vendor.supertext.v1 import ApiKeyCheck, InstallationReporter, NameVersion, PingResponse, ReporterResult, ReporterState, ping_response, reporter_state
+from ._vendor.plugin_health import (
+    CallableKeyChecker,
+    HttpRequest,
+    HttpResponse,
+    InstallationReporter,
+    KeyCheck,
+    NameVersion,
+    PingResponse,
+    ReporterResult,
+    ReporterState,
+    ping_response,
+    reporter_state,
+)
+from ._vendor.supertext import SDK_VERSION
+from ._vendor.supertext import v1 as sdk
+from .client import SupertextClient
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +47,7 @@ logger = logging.getLogger(__name__)
 PLUGIN_NAME = "djangoCMS-Supertext-Translation"
 STATE_KEY = "reporter"
 
-#: For tests: extra options for the SDK reporter (transport, report_url, now, client_options).
+#: For tests: extra options for the Plugin Health reporter (transport, report_url, now, key_checker).
 REPORTER_OVERRIDES: dict = {}
 
 
@@ -92,7 +108,7 @@ def save_state(state: ReporterState) -> None:
     State.objects.update_or_create(key=STATE_KEY, defaults={"value": state.to_json()})
 
 
-def last_check() -> ApiKeyCheck | None:
+def last_check() -> KeyCheck | None:
     try:
         return load_state().key_check
     except Exception:  # noqa: BLE001 - the table may not be migrated yet
@@ -100,17 +116,29 @@ def last_check() -> ApiKeyCheck | None:
 
 
 def reporter(options: conf.Options, url: str | None) -> InstallationReporter:
-    """The SDK reporter. Without a site URL it only checks the key (reports need the URL)."""
+    """The Plugin Health reporter. Without a site URL it only checks the key (reports need the URL).
+
+    Reports and key checks go through the plugin's ``requests`` transport (proxies, certificates); the
+    key check is the SDK's ``check_api_key`` against the configured API URL."""
     client = options.client()
+
+    def send(request: HttpRequest) -> HttpResponse:
+        answer = client.transport(sdk.HttpRequest(request.method, request.url, dict(request.headers), request.body, request.timeout))
+        return HttpResponse(answer.status, answer.body)
+
+    def check(api_key: str) -> object:
+        return SupertextClient(api_key, options.base_url, session=client.transport.session).check_api_key()
+
     path = ping_path()
     kwargs = {
         "enabled": options.reports_enabled and bool(url),
         "site_url": url or "",
         "plugin": NameVersion(PLUGIN_NAME, __version__),
         "system": NameVersion("django CMS", django_cms_version()),
+        "sdk_version": SDK_VERSION,
         "callback_url": url + path if url and path else None,
-        "transport": client.transport,
-        "client_options": {"base_url": options.base_url, "user_agent": client.user_agent},
+        "transport": send,
+        "key_checker": CallableKeyChecker(check=check, fingerprint=sdk.api_key_fingerprint),
     }
     kwargs.update(REPORTER_OVERRIDES)
     return InstallationReporter(**kwargs)
@@ -174,7 +202,7 @@ def report_translation(results, options: conf.Options | None = None, request=Non
 # -- Key check messages (Commando Center's table, in the admin language) -----------------------
 
 
-def check_message(check: ApiKeyCheck | None) -> str:
+def check_message(check: KeyCheck | None) -> str:
     """The plain text of a key check result."""
     if check is None:
         return _("Not checked yet.")
@@ -198,7 +226,7 @@ def check_message(check: ApiKeyCheck | None) -> str:
 _API_PAGE = "supertext.com → Integrations → API"
 
 
-def check_html(check: ApiKeyCheck | None) -> SafeString:
+def check_html(check: KeyCheck | None) -> SafeString:
     """The message with *supertext.com* and *supertext.com → Integrations → API* as links (new tab)."""
     text = str(escape(check_message(check)))
     if check is not None and check.status in ("invalid", "missing"):
