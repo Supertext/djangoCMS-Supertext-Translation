@@ -96,12 +96,24 @@ def test_errors_are_reported_per_language(page):
 
 
 def test_unmapped_language_is_not_sent(page, session):
-    # "it" is not a Supertext code (it-IT or it-CH): reported for that language, nothing sent for it.
+    # "en-ie" has no Supertext code and no default (en-GB? en-US?): reported for that language, nothing sent for it.
     client = options().client(session=session, sleep=lambda s: None)
-    results = translator.translate_page(page, "en", ["it", "fr-ch"], options=options(), client=client)
-    assert [(r.language, r.status, r.code) for r in results] == [("it", "error", "unsupported_language"), ("fr-ch", "translated", "")]
-    assert "The language it has no Supertext language yet" in results[0].message
+    results = translator.translate_page(page, "en", ["en-ie", "fr-ch"], options=options(), client=client)
+    assert [(r.language, r.status, r.code) for r in results] == [("en-ie", "error", "unsupported_language"), ("fr-ch", "translated", "")]
+    assert "The language en-ie has no Supertext language yet" in results[0].message
+    assert "Settings and connection → Languages" in results[0].message
     assert [c["data"]["target_lang"] for c in session.calls if c["method"] == "POST"] == ["fr-CH"]
+
+
+def test_language_chosen_on_the_settings_page_is_used(page, session):
+    from djangocms_supertext.models import LanguageSetting
+
+    LanguageSetting.objects.create(language="fr-ch", supertext_code="fr-FR", politeness="more")
+    opts = options()
+    results = translator.translate_page(page, "en", ["fr-ch"], options=opts, client=opts.client(session=session, sleep=lambda s: None))
+    assert results[0].status == "translated"
+    posts = [c["data"] for c in session.calls if c["method"] == "POST"]
+    assert [(d["target_lang"], d.get("politeness")) for d in posts] == [("fr-FR", "more")]
 
 
 def test_politeness_without_support_is_reported(page, session):

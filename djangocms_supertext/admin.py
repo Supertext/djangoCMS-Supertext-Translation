@@ -4,7 +4,8 @@ toolbar) and the Supertext settings page with "Test connection".
 
     /admin/djangocms_supertext/translation/                    list (view permission)
     /admin/djangocms_supertext/translation/page/<page_id>/     translate dialog
-    /admin/djangocms_supertext/translation/settings/           settings and Test connection (superusers)
+    /admin/djangocms_supertext/translation/settings/           settings, languages and Test connection (superusers)
+    /admin/djangocms_supertext/languagesetting/                the saved languages in the plain Django admin (superusers)
     /admin/djangocms_supertext/translation/ping/               public: the Commando Center's ping (views.ping)
 """
 
@@ -19,13 +20,14 @@ from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.dateparse import parse_datetime
+from django.utils.translation import get_language, get_language_info
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
 from . import __version__, conf, reporting, translator, views
 from .client import SupertextError
 from .translator import localized
-from .models import Translation
+from .models import LanguageSetting, Translation
 
 PERMISSION = "djangocms_supertext.translate"
 RELEASES_URL = "https://github.com/Supertext/djangoCMS-Supertext-Translation/releases/tag/v{version}"
@@ -37,6 +39,123 @@ def plugin_version() -> dict:
     version = __version__
     url = RELEASES_URL.format(version=version) if re.fullmatch(r"\d+\.\d+\.\d+", version) else ""
     return {"number": version, "url": url}
+
+
+# -- Supertext languages (the combo boxes) -------------------------------------------------------
+
+
+def target_label(target) -> str:
+    """``Name (code)`` for a Supertext target, the name in the admin's language where Django knows it."""
+    name = target.name
+    if (get_language() or "en").split("-")[0] != "en":
+        code = target.code.lower()
+        for candidate in (code, code.split("-")[0]):
+            try:
+                name = get_language_info(candidate)["name_translated"]
+                break
+            except KeyError:
+                continue
+    return f"{name} ({target.code})"
+
+
+def target_choices(blank: bool = True) -> list[tuple[str, str]]:
+    """The select's options: "— choose —" and Supertext's targets (the SDK's ``target_options()``)."""
+    choices = [(target.code, target_label(target)) for target in conf.Languages.target_options()]
+    return ([("", _("— choose —"))] if blank else []) + choices
+
+
+def _politeness_targets() -> list[str]:
+    return [target.code for target in conf.Languages.TARGETS if target.politeness]
+
+
+def clean_target(value: str) -> str:
+    value = (value or "").strip()
+    if value and not conf.Languages.is_supported_target(value):
+        raise forms.ValidationError(_("%(code)s is not a Supertext language.") % {"code": value})
+    return conf.Languages.match_target(value) or ""
+
+
+def clean_politeness(target: str, politeness: str) -> str:
+    """Formal/informal only where Supertext offers it for the chosen target."""
+    if politeness not in ("more", "less") or not target or not conf.Languages.supports_politeness(target):
+        return "default"
+    return politeness
+
+
+class LanguageSettingForm(forms.ModelForm):
+    """The plain Django admin form: the Supertext language as a select, validated against the SDK's list."""
+
+    supertext_code = forms.ChoiceField(label=gettext_lazy("Supertext language"), required=False)
+
+    class Meta:
+        model = LanguageSetting
+        fields = ["language", "supertext_code", "politeness"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["supertext_code"].choices = target_choices()
+
+    def clean_supertext_code(self):
+        return clean_target(self.cleaned_data.get("supertext_code"))
+
+    def clean(self):
+        data = super().clean()
+        data["politeness"] = clean_politeness(data.get("supertext_code") or "", data.get("politeness") or "default")
+        return data
+
+
+@admin.register(LanguageSetting)
+class LanguageSettingAdmin(admin.ModelAdmin):
+    form = LanguageSettingForm
+    list_display = ("language", "supertext_code", "politeness")
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    has_add_permission = has_change_permission = has_delete_permission = has_view_permission
+
+
+def cms_languages() -> list[dict]:
+    """Every django CMS language of every site, once (the mapping is per language, not per site)."""
+    from cms.utils.i18n import get_languages
+    from django.contrib.sites.models import Site
+
+    seen: dict[str, dict] = {}
+    for site in Site.objects.order_by("pk"):
+        for lang in get_languages(site.pk):
+            entry = seen.setdefault(lang["code"], {"code": lang["code"], "name": lang.get("name", lang["code"]), "sites": []})
+            entry["sites"].append(site)
+    return list(seen.values())
+
+
+def save_languages(request, languages: list[dict], options: conf.Options) -> list[str]:
+    """Saves the posted combo boxes (``target-<code>``, ``politeness-<code>``); returns the errors.
+    Languages set under LANGUAGES in the SUPERTEXT setting are left alone (that setting wins)."""
+    errors = []
+    for lang in languages:
+        code = lang["code"]
+        if options.override_code(code):
+            target = options.saved_code(code)  # the select is disabled: keep what was saved
+        else:
+            try:
+                target = clean_target(request.POST.get(f"target-{code}", ""))
+            except forms.ValidationError as error:
+                errors.extend(f"{lang['name']}: {message}" for message in error.messages)
+                continue
+        if options.override_politeness(code):
+            politeness = _saved_politeness(options, code)
+        else:
+            politeness = clean_politeness(options.override_code(code) or target, request.POST.get(f"politeness-{code}", "default"))
+        LanguageSetting.objects.update_or_create(language=code, defaults={"supertext_code": target, "politeness": politeness})
+    return errors
+
+
+def _saved_politeness(options: conf.Options, code: str) -> str:
+    value = conf._lookup(options.saved, code).get("politeness") or "default"
+    return value if value in ("more", "less") else "default"
 
 
 class TranslateForm(forms.Form):
@@ -151,10 +270,20 @@ class TranslationAdmin(admin.ModelAdmin):
             raise PermissionDenied
         from cms.utils.i18n import get_languages
         from django.contrib.sites.models import Site
+        from django.shortcuts import redirect
 
         options = conf.load()
+        languages = cms_languages()
         tested = None
-        if request.method == "POST":
+        if request.method == "POST" and request.POST.get("action") == "languages":
+            errors = save_languages(request, languages, options)
+            for error in errors:
+                messages.error(request, error)
+            if not errors:
+                messages.success(request, _("The Supertext languages were saved."))
+                return redirect("admin:djangocms_supertext_settings")
+            options = conf.load()
+        elif request.method == "POST":
             # Test connection: the SDK's key check (ok, invalid, missing, unreachable, error), stored and reported.
             result = reporting.run("test_connection", options, request)
             tested = result.check if result else options.client().check_api_key()
@@ -162,16 +291,16 @@ class TranslationAdmin(admin.ModelAdmin):
 
         sites = []
         for site in Site.objects.order_by("pk"):
-            sites.append({
-                "site": site,
-                "languages": [_language_row(options, lang) for lang in get_languages(site.pk)],
-            })
+            sites.append({"site": site, "languages": [lang["code"] for lang in get_languages(site.pk)]})
         check = tested or reporting.last_check()
         context = {
             **self.admin_site.each_context(request),
             "title": _("Supertext settings"),
             "options": options,
             "sites": sites,
+            "languages": [_language_row(options, lang) for lang in languages],
+            "target_choices": target_choices(),
+            "politeness_targets": _politeness_targets(),
             "signup_url": conf.SIGNUP_URL,
             "api_key_url": conf.API_KEY_URL,
             "opts": self.model._meta,
@@ -182,7 +311,6 @@ class TranslationAdmin(admin.ModelAdmin):
             "reports_enabled": options.reports_enabled,
             "reports_from_environment": options.reports_from_environment,
             "ping_url": (reporting.site_url(options, request) or "") + reporting.ping_path(),
-            "supertext_targets": conf.Languages.TARGETS,
         }
         response = TemplateResponse(request, "djangocms_supertext/settings.html", context)
         if request.method != "POST":
@@ -192,15 +320,26 @@ class TranslationAdmin(admin.ModelAdmin):
 
 
 def _language_row(options: conf.Options, lang: dict) -> dict:
+    """One row of the language table: the select's value (override, else saved, else the SDK's
+    suggestion, else "— choose —") and whether the language can be translated."""
     code = lang["code"]
+    override = options.override_code(code)
+    saved = options.saved_code(code)
+    suggested = conf.Languages.suggest_target(code) or ""
+    selected = override or saved or suggested
     target = options.target_code_or_none(code)
     politeness = options.politeness(code)
     return {
         "code": code,
         "name": lang.get("name", code),
+        "sites": lang.get("sites", []),
+        "selected": selected,
+        "override": override,
+        "override_politeness": bool(options.override_politeness(code)),
+        "suggested": suggested if not (override or saved) else "",
         "target": target,
-        "mapped": bool(options.mapping_for(code)),
         "politeness": politeness,
+        "politeness_supported": bool(selected) and conf.Languages.supports_politeness(selected) is True,
         "politeness_unsupported": politeness != "default" and target is not None and conf.Languages.supports_politeness(target) is False,
     }
 

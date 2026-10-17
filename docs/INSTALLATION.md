@@ -59,7 +59,7 @@ See [CHANGELOG.md](../CHANGELOG.md).
 
 ### Uninstall
 
-Remove `"djangocms_supertext"` from `INSTALLED_APPS` after running `python manage.py migrate djangocms_supertext zero` (which drops the translation log and the package's state table), then `pip uninstall djangocms-supertext-translation`. Translations already made are normal page content and stay.
+Remove `"djangocms_supertext"` from `INSTALLED_APPS` after running `python manage.py migrate djangocms_supertext zero` (which drops the translation log, the chosen Supertext languages and the package's state table), then `pip uninstall djangocms-supertext-translation`. Translations already made are normal page content and stay.
 
 ## API key
 
@@ -76,7 +76,7 @@ You can paste it with or without the `Supertext-Auth-Key ` prefix that Supertext
 
 The package checks the key automatically (see [Version information and the API key check](#version-information-and-the-api-key-check)) and shows the latest result on the settings page: *Supertext → Supertext translations → Settings and connection* (superusers). **Test connection** there, or `python manage.py supertext_check`, checks it again. Both call a cost-free endpoint of the Supertext API. While no key is set or Supertext rejects it, the settings page, the translate dialog and `supertext_check` link to the account signup and the API key page. The settings page also shows the installed *Plugin version* (django CMS doesn't list app versions in its admin); a release version links to its release notes on GitHub.
 
-![The Supertext settings page: "API key checked: the connection to Supertext works." with its time, the API key's source, the live API address, the timeout, the plugin version, links to create a Supertext account and to generate the API key, Send version information to Supertext: On with the ping address, and the languages of the site with their Supertext code and form of address](images/06-settings.png)
+![The Supertext settings page: "API key checked: the connection to Supertext works." with its time, the API key's source, the live API address, the timeout, the plugin version, links to create a Supertext account and to generate the API key, Send version information to Supertext: On with the ping address, and the Languages table with a Supertext language select and a form of address per django CMS language](images/06-settings.png)
 
 ## Languages
 
@@ -91,7 +91,11 @@ LANGUAGES = [
 ]
 ```
 
-Each django CMS language needs a Supertext language. Supertext accepts exactly these target codes (from its `features` list, October 2026):
+Each django CMS language needs a Supertext language. **Choose it on the settings page** (*Django admin → Supertext → Supertext translations → Settings and connection → Languages*, superusers): one row per django CMS language (of all sites, the source language included), with a select of all Supertext languages ("Name (code)") and, where Supertext offers it for the chosen language, the form of address. *Save languages* stores the choices in the database (table `djangocms_supertext_languagesetting`, migration `0003_language_setting`); only codes from Supertext's list are accepted. One choice serves both directions: a language chosen as `de-CH` is translated into `de-CH` and from `de`.
+
+![The Languages table on the Supertext settings page: English en with "English (United States) (en-US)" preselected as a suggestion and "No choice for this language" as form of address; Deutsch (Schweiz), Français (Suisse) and Italiano (Svizzera) with German, French and Italian (Switzerland) and "Formal (Sie, vous)"; the Save languages button](images/08-languages.png)
+
+Supertext accepts exactly these target codes (from its `features` list, October 2026), which is what the select offers:
 
 | Language | Supertext codes |
 | --- | --- |
@@ -100,12 +104,23 @@ Each django CMS language needs a Supertext language. Supertext accepts exactly t
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
 | All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
 
-- A django CMS code that **is** one of these codes (apart from upper/lower case and `_`/`-`) is used as it is: `de-ch` → `de-CH`, `fr_ch` → `fr-CH`, `es`, `nl`.
-- **Every other code needs a `code` under `SUPERTEXT["LANGUAGES"]`** (below), e.g. `"de": {"code": "de-CH"}`, `"en": {"code": "en-GB"}`, `"zh-hans": {"code": "zh-Hans"}`, `"no": {"code": "nb"}`. The package never guesses a region: an unmapped language is reported as *has no Supertext language yet* when someone translates into it, and nothing is sent for it.
-- The source language is sent without region (`en-gb` → `en`; a mapped `de` → `de-CH` translates from `de`).
-- Formal/informal (`politeness`) isn't offered for English, Swiss German, Romansh, Albanian and Serbian; leave those on the default.
+A language nobody has chosen a Supertext language for is translated with the **suggestion** the select shows preselected (the Supertext SDK's default), so obvious languages work without any setup:
 
-The settings page lists the code each language is sent with, marks languages that still need a code (*Not mapped*) and a form of address Supertext doesn't offer for a language, and has the full list of Supertext languages. The editors see the languages in the toolbar's *Language* menu:
+| django CMS code | Supertext language used until you choose another one |
+| --- | --- |
+| a Supertext code apart from case and `_`/`-` | that code: `de-ch` → `de-CH`, `fr_ch` → `fr-CH`, `es`, `nl`, `zh-hant` → `zh-Hant` |
+| `de`, `en`, `fr`, `it`, `pt` | `de-DE`, `en-US`, `fr-FR`, `it-IT`, `pt-PT` |
+| `zh`, `zh-cn`, `zh-sg` / `zh-tw`, `zh-hk`, `zh-mo` | `zh-Hans` / `zh-Hant` |
+| `sr` | `sr-Latn` |
+| a region of a language Supertext has without region | the bare code: `es-es` → `es`, `sl-si` → `sl`, `nl-be` → `nl` |
+| anything else (`en-ie`, `de-li`, `gsw`, `sr-rs`, `no`, …) | none: the select shows *— choose —* and the row is marked; until you choose one, translating into it is reported as *has no Supertext language yet* and nothing is sent for it |
+
+- Choose another language where the suggestion isn't what your site means, e.g. `de-CH` for a `de` site in Switzerland, `en-GB` for British English, `nb` for `no`.
+- The source language is sent without region (`en-gb` → `en`; `de` chosen as `de-CH` translates from `de`).
+- Formal/informal is only offered where Supertext has it (not for English, Swiss German, Romansh, Albanian and Serbian).
+- **Override for automated setups:** a `code` (and/or `politeness`) under `SUPERTEXT["LANGUAGES"]` in the settings (below) wins over the settings page. That row's select is then disabled and says *Set under LANGUAGES in the SUPERTEXT setting*. Sites that configured `LANGUAGES` before keep working unchanged; to manage a language on the settings page instead, remove its entry from `LANGUAGES`.
+
+The editors see the languages in the toolbar's *Language* menu:
 
 ![The django CMS toolbar in edit mode with the Language menu open: English, Add Translation, Delete Translation and "Translate with Supertext…"](images/01-language-menu.png)
 
@@ -128,7 +143,7 @@ SUPERTEXT = {
     "API_KEY": "",                    # or the SUPERTEXT_API_KEY environment variable (wins)
     "ENVIRONMENT": "live",            # live | staging | testing
     "API_URL": "",                    # custom base URL; or SUPERTEXT_API_URL (wins)
-    "LANGUAGES": {                    # per django CMS language code
+    "LANGUAGES": {                    # optional: overrides the settings page's Languages table
         "de-ch": {"politeness": "more"},             # formal (Sie, vous)
         "fr": {"code": "fr-CH", "politeness": "less"},  # other Supertext code, informal (du, tu)
     },
@@ -146,7 +161,7 @@ SUPERTEXT = {
 | `API_KEY` | – | Supertext API key; the environment variable `SUPERTEXT_API_KEY` takes precedence. |
 | `ENVIRONMENT` | `live` | `live` (`https://api.supertext.com/v1/`), `staging` or `testing`. |
 | `API_URL` | – | A different base URL (proxy, test server); `SUPERTEXT_API_URL` takes precedence. |
-| `LANGUAGES` | `{}` | Per django CMS language code: `code`, the Supertext language (one of the [Supertext codes](#languages), e.g. `de-CH`, `es`, `zh-Hans`; as source its language without region is sent). Needed for every code that isn't itself a Supertext code; there are no default regions. `politeness`: `more` formal, `less` informal, `default` (only for languages that offer it). |
+| `LANGUAGES` | `{}` | Optional override of the settings page's [Languages](#languages) table, for automated setups. Per django CMS language code: `code`, the Supertext language (one of the [Supertext codes](#languages), e.g. `de-CH`, `es`, `zh-Hans`; as source its language without region is sent), and `politeness`: `more` formal, `less` informal, `default` (only for languages that offer it). A value set here wins over the settings page, whose select for it is then disabled. |
 | `TIMEOUT` | `180` | Seconds to wait for the translation of one language. |
 | `POLL_INTERVAL` | `2` | Seconds between status checks. |
 | `PLUGIN_FIELDS` | see below | Plugin type → `{model field: "text" or "html"}`. |
@@ -181,9 +196,9 @@ Translating runs in the editor's request: a few seconds per language, up to `TIM
 | *Supertext is not set up yet* in the dialog | `SUPERTEXT_API_KEY` is not set on the server. Generate a key at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and set it. |
 | *Authentication failed. Please check the Supertext API key.* | Wrong or revoked key, or a key for another environment. Generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role) and use *Test connection*. |
 | *This language is published. Create a draft of it, then translate again.* | With djangocms-versioning, only drafts can be changed. Create a draft of that language (or delete the language) and translate again. |
-| *The language … has no Supertext language yet* / *Not mapped* on the settings page | The django CMS code isn't a Supertext code: set `code` for it under `SUPERTEXT["LANGUAGES"]` (see [Languages](#languages)). |
-| *Supertext does not support this language pair (en → xx-YY)* | A `code` in `SUPERTEXT["LANGUAGES"]` Supertext doesn't offer (e.g. `es-ES` instead of `es`, or the same language as the source). Fix it; the message shows the codes that were sent. |
-| *Supertext offers no formal or informal tone for this language* | `politeness` is `more`/`less` for a language without it (English, Swiss German, Romansh, Albanian, Serbian); remove it. Nothing is sent for that language until then. |
+| *The language … has no Supertext language yet* / *No Supertext language: choose one* on the settings page | The django CMS code isn't a Supertext code and has no default (e.g. `en-ie`, `gsw`): choose its Supertext language under *Supertext → Supertext translations → Settings and connection → Languages* (see [Languages](#languages)). |
+| *Supertext does not support this language pair (en → xx-YY)* | A `code` in `SUPERTEXT["LANGUAGES"]` Supertext doesn't offer (e.g. `es-ES` instead of `es`), or the same language as source and target. Fix it (or remove it and choose the language on the settings page); the message shows the codes that were sent. |
+| *Supertext offers no formal or informal tone for this language* | `politeness` under `SUPERTEXT["LANGUAGES"]` is `more`/`less` for a language without it (English, Swiss German, Romansh, Albanian, Serbian); remove it. Nothing is sent for that language until then. |
 | *Supertext rejected the API key* on the settings page | The key is wrong or revoked. Check that the whole key was copied into `SUPERTEXT_API_KEY`, or generate a new one at [supertext.com → Integrations → API](https://www.supertext.com/en/integrations/api) (Admin role). No Supertext account yet? [Create one at supertext.com](https://www.supertext.com/person/en/account/signin). Then *Test connection*. |
 | *The API key couldn't be checked because Supertext can't be reached* | The server can't reach `api.supertext.com` (firewall, proxy, DNS). Translations need the same connection. |
 | *Too many requests to Supertext* | The API's per-second limit was hit repeatedly although the package retries. Try again shortly. |

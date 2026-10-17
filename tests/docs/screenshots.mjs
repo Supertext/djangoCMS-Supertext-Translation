@@ -96,6 +96,10 @@ async function openDialog(page) {
   const main = await page.locator('#content-main').boundingBox()
   const messages = await page.locator('.messagelist').boundingBox()
   await page.screenshot({ path: OUT + '06-settings.png', fullPage: true, clip: { x: main.x - 20, y: messages.y - 10, width: 800, height: main.y + main.height - messages.y + 30 } })
+  // The Supertext languages: one select per django CMS language
+  const languages = await page.locator('[data-supertext-languages]').boundingBox()
+  const heading = await page.locator('[data-supertext-languages-heading]').boundingBox()
+  await page.screenshot({ path: OUT + '08-languages.png', fullPage: true, clip: { x: languages.x - 10, y: heading.y - 10, width: Math.min(800, languages.width + 20), height: languages.y + languages.height - heading.y + 20 } })
 
   await go(page, '/en/admin/djangocms_supertext/translation/')
   await page.screenshot({ path: OUT + '07-translations-log.png', clip: { x: 0, y: 0, width: 1280, height: 460 } })

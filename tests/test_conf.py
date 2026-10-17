@@ -1,4 +1,5 @@
-"""Settings and language codes (conf.py): the mapping, else an exact Supertext code, else unsupported_language."""
+"""Settings and language codes (conf.py): the mapping (LANGUAGES override, else the settings page), else an
+exact Supertext code, else the SDK default, else unsupported_language."""
 
 import pytest
 
@@ -28,9 +29,18 @@ def test_exact_supertext_codes_are_used():
     assert options.target_code("NL") == "nl"
 
 
-@pytest.mark.parametrize("code", ["de", "fr", "en", "es-es", "sl-si", "zh-cn", "xx"])
+@pytest.mark.parametrize(("code", "expected"), [
+    ("de", "de-DE"), ("fr", "fr-FR"), ("en", "en-US"), ("it", "it-IT"), ("pt", "pt-PT"),
+    ("es-es", "es"), ("sl-si", "sl"), ("zh-cn", "zh-Hans"), ("zh-tw", "zh-Hant"), ("sr", "sr-Latn"),
+])
+def test_sdk_defaults(code, expected):
+    options = conf.load({}, saved={})
+    assert options.target_code(code) == expected
+
+
+@pytest.mark.parametrize("code", ["en-ie", "de-li", "gsw", "sr-rs", "xx"])
 def test_no_guessing(code):
-    options = conf.load({})
+    options = conf.load({}, saved={})
     with pytest.raises(SupertextError) as info:
         options.target_code(code)
     assert info.value.code == "unsupported_language"
@@ -45,6 +55,16 @@ def test_mapping_wins():
     assert options.target_code("zh_CN") == "zh-Hans"  # keys compare like codes
     assert options.target_code("en") == "en-GB"
     assert options.mapping() == {"de": "de-CH", "zh-cn": "zh-Hans", "en": "en-GB"}
+
+
+def test_settings_page_mapping_and_override():
+    saved = {"de": {"code": "de-CH", "politeness": "more"}, "fr": {"code": "fr-CH", "politeness": "default"}, "ch": {"code": "gsw-u-sd-chzh"}}
+    options = conf.load({"LANGUAGES": {"fr": {"code": "fr-FR", "politeness": "less"}}}, saved=saved)
+    assert options.target_code("de") == "de-CH" and options.politeness("de") == "more"  # the settings page
+    assert options.target_code("fr") == "fr-FR" and options.politeness("fr") == "less"  # LANGUAGES wins
+    assert options.override_code("fr") == "fr-FR" and options.saved_code("fr") == "fr-CH"
+    assert options.source_code("ch") == "gsw" and options.target_code("ch") == "gsw-u-sd-chzh"
+    assert options.target_code("it") == "it-IT"  # not chosen: the SDK default
 
 
 def test_source_codes():

@@ -63,15 +63,16 @@ MESSAGES: dict[str, str] = {
         "Generate a new API key at %(api_key_url)s (requires the Admin role)."
     ),
     ErrorCode.INVALID_LANGUAGE_PAIR: gettext_noop(
-        "Supertext does not support this language pair (%(source)s → %(target)s). Check the language codes in the LANGUAGES option."
+        "Supertext does not support this language pair (%(source)s → %(target)s). Check the Supertext languages "
+        "under Supertext → Supertext translations → Settings and connection → Languages."
     ),
     ErrorCode.UNSUPPORTED_LANGUAGE: gettext_noop(
-        "The language %(language)s has no Supertext language yet. Ask your administrator to map it "
-        "(code under LANGUAGES in the SUPERTEXT setting, e.g. de-CH)."
+        "The language %(language)s has no Supertext language yet. Ask your administrator to choose one "
+        "under Supertext → Supertext translations → Settings and connection → Languages."
     ),
     ErrorCode.UNSUPPORTED_FEATURE: gettext_noop(
         "Supertext offers no formal or informal tone for this language (%(target)s). "
-        "Set its form of address to the default (politeness under LANGUAGES in the SUPERTEXT setting)."
+        "Set its form of address to the default under Supertext → Supertext translations → Settings and connection → Languages."
     ),
     ErrorCode.NOT_FOUND: gettext_noop("The requested Supertext resource was not found."),
     ErrorCode.PAYLOAD_TOO_LARGE: gettext_noop("The content is too large for Supertext to translate in one go."),
