@@ -94,3 +94,22 @@ def test_version_reports_setting(monkeypatch):
     monkeypatch.setenv("SUPERTEXT_VERSION_REPORTS", "1")
     assert conf.load({"VERSION_REPORTS": False}).reports_enabled is True
     assert conf.load({"SITE_URL": "https://www.example.ch/"}).site_url == "https://www.example.ch"
+
+
+def test_review_url_defaults_to_supertexts_review_service(monkeypatch):
+    options = conf.load({})
+    assert options.review_url == conf.REVIEW_URL == "https://localizationreview-production.up.railway.app/v1/"
+    assert options.review_enabled and options.client().review_url == conf.REVIEW_URL
+    assert conf.load({"REVIEW_URL": ""}).review_enabled is False
+    assert conf.load({"REVIEW_URL": None}).review_url == ""
+    assert conf.load({"REVIEW_URL": "https://api.supertext.com/v1/"}).review_enabled is False  # the API itself: no second client
+    monkeypatch.setenv("SUPERTEXT_REVIEW_URL", "http://127.0.0.1:3000/v1/")
+    assert conf.load({"REVIEW_URL": ""}).review_url == "http://127.0.0.1:3000/v1/"
+
+
+def test_review_per_language_off_by_default_and_override_wins():
+    options = conf.load({"LANGUAGES": {"fr-ch": {"review": False}, "it-ch": {"review": True}}}, saved={"de-ch": {"code": "", "review": True}, "fr-ch": {"review": True}})
+    assert options.review("de-ch") is True and options.review("DE_CH") is True
+    assert options.review("fr-ch") is False  # LANGUAGES wins over the settings page
+    assert options.review("it-ch") is True
+    assert options.review("en") is False

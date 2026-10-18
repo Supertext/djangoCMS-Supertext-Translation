@@ -92,7 +92,7 @@ class LanguageSettingForm(forms.ModelForm):
 
     class Meta:
         model = LanguageSetting
-        fields = ["language", "supertext_code", "politeness"]
+        fields = ["language", "supertext_code", "politeness", "review"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -110,7 +110,7 @@ class LanguageSettingForm(forms.ModelForm):
 @admin.register(LanguageSetting)
 class LanguageSettingAdmin(admin.ModelAdmin):
     form = LanguageSettingForm
-    list_display = ("language", "supertext_code", "politeness")
+    list_display = ("language", "supertext_code", "politeness", "review")
 
     def has_module_permission(self, request):
         return request.user.is_superuser
@@ -135,7 +135,8 @@ def cms_languages() -> list[dict]:
 
 
 def save_languages(request, languages: list[dict], options: conf.Options) -> list[str]:
-    """Saves the posted combo boxes (``target-<code>``, ``politeness-<code>``); returns the errors.
+    """Saves the posted combo boxes (``target-<code>``, ``politeness-<code>``) and checkboxes
+    (``review-<code>``, *Translation review*); returns the errors.
     Languages set under LANGUAGES in the SUPERTEXT setting are left alone (that setting wins)."""
     errors = []
     for lang in languages:
@@ -152,7 +153,11 @@ def save_languages(request, languages: list[dict], options: conf.Options) -> lis
             politeness = _saved_politeness(options, code)
         else:
             politeness = clean_politeness(options.override_code(code) or target, request.POST.get(f"politeness-{code}", "default"))
-        LanguageSetting.objects.update_or_create(language=code, defaults={"supertext_code": target, "politeness": politeness})
+        if options.override_review(code) is not None or not options.review_enabled:
+            review = options.saved_review(code)  # the checkbox is disabled: keep what was saved
+        else:
+            review = bool(request.POST.get(f"review-{code}"))
+        LanguageSetting.objects.update_or_create(language=code, defaults={"supertext_code": target, "politeness": politeness, "review": review})
     return errors
 
 
@@ -441,6 +446,8 @@ def _language_row(options: conf.Options, lang: dict) -> dict:
         "politeness": politeness,
         "politeness_supported": bool(selected) and conf.Languages.supports_politeness(selected) is True,
         "politeness_unsupported": politeness != "default" and target is not None and conf.Languages.supports_politeness(target) is False,
+        "review": options.review(code),
+        "override_review": options.override_review(code) is not None,
     }
 
 

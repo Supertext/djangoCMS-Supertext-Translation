@@ -134,7 +134,8 @@ def translate_page(page, source_language: str, targets: list[str], overwrite: bo
         try:
             if existing is not None:
                 _check_editable(existing)
-            translated = _translate(client, source.units, source_language, target, options)
+            # Translation review: languages with it on go through the review service (same protocol).
+            translated = _translate(client.for_review(options.review(target)), source.units, source_language, target, options)
             with transaction.atomic():
                 created = _apply(page, source, translated, target, existing, user)
             results.append(Result(target, Translation.STATUS_TRANSLATED, created=created))

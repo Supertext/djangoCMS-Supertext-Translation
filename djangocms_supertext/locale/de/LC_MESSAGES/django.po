@@ -460,7 +460,8 @@ msgid "Translated file (XLIFF or HTML)"
 msgstr "Übersetzte Datei (XLIFF oder HTML)"
 
 msgid "Also import texts whose source changed since the export"
-msgstr "Auch Texte importieren, deren Ausgangstext sich seit dem Export geändert hat"
+msgstr ""
+"Auch Texte importieren, deren Ausgangstext sich seit dem Export geändert hat"
 
 msgid "Export for translation"
 msgstr "Für Übersetzung exportieren"
@@ -471,14 +472,20 @@ msgstr "Übersetzung importieren"
 msgid "Download file"
 msgstr "Datei herunterladen"
 
-msgid "Translate the file in a translation tool, by a translator or in the Supertext web app, then import it here."
-msgstr "Lassen Sie die Datei in einem Übersetzungstool, von einer Übersetzerin oder einem Übersetzer oder in der Supertext-Web-App übersetzen und importieren Sie sie dann hier."
+msgid ""
+"Translate the file in a translation tool, by a translator or in the "
+"Supertext web app, then import it here."
+msgstr ""
+"Lassen Sie die Datei in einem Übersetzungstool, von einer Übersetzerin oder "
+"einem Übersetzer oder in der Supertext-Web-App übersetzen und importieren "
+"Sie sie dann hier."
 
 msgid "The file is too large (at most 10 MB)."
 msgstr "Die Datei ist zu gross (höchstens 10 MB)."
 
 msgid "Choose one language for an HTML file, or one or more for XLIFF."
-msgstr "Wählen Sie für eine HTML-Datei eine Sprache, für XLIFF eine oder mehrere."
+msgstr ""
+"Wählen Sie für eine HTML-Datei eine Sprache, für XLIFF eine oder mehrere."
 
 msgid "Nothing to translate."
 msgstr "Nichts zu übersetzen."
@@ -486,14 +493,19 @@ msgstr "Nichts zu übersetzen."
 msgid "This file isn't a valid XLIFF or HTML translation file."
 msgstr "Diese Datei ist keine gültige XLIFF- oder HTML-Übersetzungsdatei."
 
-msgid "This file wasn't exported by the Supertext plugin, or its header was removed."
-msgstr "Diese Datei wurde nicht vom Supertext-Plugin exportiert, oder ihr Kopfbereich wurde entfernt."
+msgid ""
+"This file wasn't exported by the Supertext plugin, or its header was "
+"removed."
+msgstr ""
+"Diese Datei wurde nicht vom Supertext-Plugin exportiert, oder ihr "
+"Kopfbereich wurde entfernt."
 
 msgid "This file belongs to another system (%(plugin)s)."
 msgstr "Diese Datei gehört zu einem anderen System (%(plugin)s)."
 
 msgid "The page this file was exported from no longer exists."
-msgstr "Die Seite, aus der diese Datei exportiert wurde, existiert nicht mehr."
+msgstr ""
+"Die Seite, aus der diese Datei exportiert wurde, existiert nicht mehr."
 
 msgid "The site has no language %(language)s."
 msgstr "Die Website hat keine Sprache %(language)s."
@@ -515,3 +527,26 @@ msgstr "Formatierung verändert, nicht importiert: %(count)s"
 
 msgid "Not in the file: %(count)s"
 msgstr "Nicht in der Datei: %(count)s"
+
+msgid "Translation review"
+msgstr "Übersetzungsprüfung"
+
+msgid ""
+"Translations into this language go through Supertext's review service, so "
+"reviewers can check and correct them on the website with the Supertext "
+"Localization Review extension. Their corrections are used the next time the "
+"page is translated."
+msgstr ""
+"Übersetzungen in diese Sprache laufen über den Prüfdienst von Supertext, "
+"damit Prüferinnen und Prüfer sie mit der Erweiterung Supertext Localization "
+"Review direkt auf der Website kontrollieren und korrigieren können. Ihre "
+"Korrekturen werden beim nächsten Übersetzen der Seite übernommen."
+
+msgid "Translation review for %(name)s"
+msgstr "Übersetzungsprüfung für %(name)s"
+
+msgid "Review service"
+msgstr "Prüfdienst"
+
+msgid "Off (REVIEW_URL is empty)"
+msgstr "Aus (REVIEW_URL ist leer)"

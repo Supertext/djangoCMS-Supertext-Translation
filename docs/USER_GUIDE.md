@@ -29,6 +29,8 @@ Click **Open** (or switch the language in the toolbar). The translated version i
 
 Change what you like in edit mode, as if you had translated by hand. With djangocms-versioning, new languages are created as **drafts**: review and publish them as usual.
 
+**Translation review:** if your administrator turned on *Translation review* for a language, reviewers (your colleagues or Supertext linguists) check and correct the translations on the website. Their corrections come into django CMS the next time you translate the page into that language: after a review, translate it again with *Overwrite existing translations*. Texts reviewed once keep their corrected wording in later translations.
+
 ## Translate again or update a translation
 
 Languages the page already exists in show **Already translated** or **Translated with Supertext on** *date*, and are not ticked. If you tick one, the dialog asks whether to overwrite it:

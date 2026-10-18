@@ -20,6 +20,7 @@
       {% if check %}{{ check_html }} <span class="help">{% blocktranslate trimmed with time=checked_at|date:"DATETIME_FORMAT"|default:check.checked_at %}checked {{ time }}{% endblocktranslate %}</span>{% else %}{% translate "Not checked yet." %}{% endif %}
     </td></tr>
     <tr><th>{% translate "API" %}</th><td><code data-supertext-endpoint>{{ options.base_url }}</code></td></tr>
+    <tr><th>{% translate "Review service" %}</th><td data-supertext-review-url>{% if options.review_enabled %}<code>{{ options.review_url }}</code>{% else %}{% translate "Off (REVIEW_URL is empty)" %}{% endif %}</td></tr>
     <tr><th>{% translate "Timeout per language" %}</th><td>{{ options.timeout|floatformat:0 }} s</td></tr>
     <tr><th>{% translate "Plugin version" %}</th><td data-supertext-version>{% if version.url %}<a href="{{ version.url }}" target="_blank" rel="noopener">{{ version.number }}</a>{% else %}{{ version.number }}{% endif %}</td></tr>
   </table>
@@ -45,7 +46,7 @@
     {% csrf_token %}
     <input type="hidden" name="action" value="languages">
     <table>
-      <thead><tr><th>{% translate "Language" %}</th><th>{% translate "Supertext language" %}</th><th>{% translate "Form of address" %}</th></tr></thead>
+      <thead><tr><th>{% translate "Language" %}</th><th>{% translate "Supertext language" %}</th><th>{% translate "Form of address" %}</th><th>{% translate "Translation review" %}</th></tr></thead>
       <tbody>
         {% for lang in languages %}
           <tr data-supertext-language="{{ lang.code }}">
@@ -68,10 +69,15 @@
               {% if lang.override_politeness %}<br><span class="help">{% translate "Set under LANGUAGES in the SUPERTEXT setting." %}</span>{% endif %}
               {% if lang.politeness_unsupported %}<br><strong class="errornote" style="display: inline; padding: 2px 6px; margin: 0" data-supertext-no-politeness>{% translate "Supertext offers no formal/informal choice for this language" %}</strong>{% endif %}
             </td>
+            <td>
+              <input type="checkbox" name="review-{{ lang.code }}" value="1" data-supertext-review{% if lang.review %} checked{% endif %}{% if lang.override_review or not options.review_enabled %} disabled{% endif %} aria-label="{% blocktranslate trimmed with name=lang.name %}Translation review for {{ name }}{% endblocktranslate %}">
+              {% if lang.override_review %}<br><span class="help">{% translate "Set under LANGUAGES in the SUPERTEXT setting." %}</span>{% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
+    <p class="help" data-supertext-review-help>{% translate "Translation review" %}: {% translate "Translations into this language go through Supertext's review service, so reviewers can check and correct them on the website with the Supertext Localization Review extension. Their corrections are used the next time the page is translated." %}</p>
     <div class="submit-row" style="margin-top: 12px"><input type="submit" class="default" value="{% translate 'Save languages' %}"></div>
   </form>
   {{ politeness_targets|json_script:"supertext-politeness-targets" }}
