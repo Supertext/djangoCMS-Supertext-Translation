@@ -132,6 +132,8 @@ Editors need:
 - permission to change the page (with `CMS_PERMISSION = True`, django CMS's page permissions; otherwise the model permissions `cms.change_page`, `cms.add_pagecontent`, `cms.change_pagecontent`)
 - the permissions of the plugins on the page (e.g. `djangocms_text | text | Can add/change/delete text`), because translating copies the plugins into the target language
 
+*Export for translation* and *Import translation* (in the translate dialog) need the same permissions; an import is refused for pages the user may not change. They need no API key and have nothing to configure. Uploads are limited to 10 MB (Django's `DATA_UPLOAD_MAX_MEMORY_SIZE` doesn't apply to files; your web server's request size limit must allow 10 MB for the full limit) and are read in memory, never stored.
+
 Superusers additionally see the settings page. The log (*Supertext translations*) is visible with `djangocms_supertext.view_translation`.
 
 ## Settings

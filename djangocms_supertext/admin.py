@@ -4,6 +4,8 @@ toolbar) and the Supertext settings page with "Test connection".
 
     /admin/djangocms_supertext/translation/                    list (view permission)
     /admin/djangocms_supertext/translation/page/<page_id>/     translate dialog
+    /admin/djangocms_supertext/translation/page/<page_id>/export/   Export for translation (file download)
+    /admin/djangocms_supertext/translation/page/<page_id>/import/   Import translation (file upload)
     /admin/djangocms_supertext/translation/settings/           settings, languages and Test connection (superusers)
     /admin/djangocms_supertext/languagesetting/                the saved languages in the plain Django admin (superusers)
     /admin/djangocms_supertext/translation/ping/               public: the Commando Center's ping (views.ping)
@@ -16,6 +18,7 @@ import re
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -24,7 +27,7 @@ from django.utils.translation import get_language, get_language_info
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
-from . import __version__, conf, reporting, translator, views
+from . import __version__, conf, files, reporting, translator, views
 from .client import SupertextError
 from .translator import localized
 from .models import LanguageSetting, Translation
@@ -180,6 +183,34 @@ class TranslateForm(forms.Form):
         self.fields["targets"].initial = [lang["code"] for lang in languages if not lang["exists"] and lang["code"] != source]
 
 
+class ExportForm(forms.Form):
+    """Export for translation: the page in one source language, as XLIFF (several languages) or HTML (one)."""
+
+    source = forms.ChoiceField(label=gettext_lazy("From"))
+    targets = forms.MultipleChoiceField(label=gettext_lazy("Into"), widget=forms.CheckboxSelectMultiple, required=True)
+    format = forms.ChoiceField(
+        label=gettext_lazy("File format"),
+        widget=forms.RadioSelect,
+        initial=files.XLIFF,
+        choices=[(files.XLIFF, gettext_lazy("XLIFF 1.2 (for translation tools)")), (files.HTML, gettext_lazy("HTML (one language per file)"))],
+    )
+
+    def __init__(self, *args, languages: list[dict], source: str, **kwargs):
+        super().__init__(*args, prefix="export", **kwargs)
+        self.fields["source"].choices = [(lang["code"], lang["name"]) for lang in languages if lang["exists"]]
+        self.fields["source"].initial = source
+        self.fields["targets"].choices = [(lang["code"], lang["name"]) for lang in languages]
+
+
+class ImportForm(forms.Form):
+    file = forms.FileField(label=gettext_lazy("Translated file (XLIFF or HTML)"))
+    include_changed = forms.BooleanField(label=gettext_lazy("Also import texts whose source changed since the export"), required=False)
+    overwrite = forms.BooleanField(label=gettext_lazy("Overwrite existing translations"), required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, prefix="import", **kwargs)
+
+
 @admin.register(Translation)
 class TranslationAdmin(admin.ModelAdmin):
     list_display = ("created", "page", "source_language", "target_language", "status", "user", "message")
@@ -200,6 +231,8 @@ class TranslationAdmin(admin.ModelAdmin):
     def get_urls(self):
         return [
             path("page/<int:page_id>/", self.admin_site.admin_view(self.translate_view), name="djangocms_supertext_translate"),
+            path("page/<int:page_id>/export/", self.admin_site.admin_view(self.export_view), name="djangocms_supertext_export"),
+            path("page/<int:page_id>/import/", self.admin_site.admin_view(self.import_view), name="djangocms_supertext_import"),
             path("settings/", self.admin_site.admin_view(self.settings_view), name="djangocms_supertext_settings"),
             # Public on purpose (no admin_view): only echoes the Commando Center's challenge.
             path("ping/", views.ping, name="djangocms_supertext_ping"),
@@ -207,7 +240,8 @@ class TranslationAdmin(admin.ModelAdmin):
 
     # -- translate dialog ---------------------------------------------------------------------
 
-    def translate_view(self, request, page_id: int):
+    def _page(self, request, page_id: int):
+        """The page, if the user may translate it with Supertext (the permission and changing the page)."""
         from cms.models import Page
 
         if not request.user.has_perm(PERMISSION):
@@ -215,6 +249,10 @@ class TranslationAdmin(admin.ModelAdmin):
         page = get_object_or_404(Page, pk=page_id)
         if not page.has_change_permission(request.user):
             raise PermissionDenied
+        return page
+
+    def translate_view(self, request, page_id: int):
+        page = self._page(request, page_id)
         options = conf.load()
         languages = translator.describe(page)
         source = request.GET.get("language") or request.POST.get("source") or next((lang["code"] for lang in languages if lang["exists"]), "")
@@ -242,26 +280,88 @@ class TranslationAdmin(admin.ModelAdmin):
                 form = TranslateForm(languages=languages, source=source)
 
         names = {lang["code"]: lang["name"] for lang in languages}
+        response = self._dialog(request, page, options, languages, source, form=form, results=[
+            {"result": r, "name": names.get(r.language, r.language), "url": _edit_url(page, r.language)}
+            for r in results or []
+        ])
+        # Version report and key check after the response (an upgrade, a changed key, a rejected key).
+        reporting.report_translation(results if translated else [], options, request, response)
+        return response
+
+    def _dialog(self, request, page, options, languages, source, *, form=None, export_form=None, import_form=None,
+                results=None, export_error="", import_error="", import_results=None):
         context = {
             **self.admin_site.each_context(request),
             "title": _("Translate with Supertext"),
             "page": page,
-            "form": form,
+            "form": form or TranslateForm(languages=languages, source=source),
+            "export_form": export_form or ExportForm(languages=languages, source=source),
+            "import_form": import_form or ImportForm(),
+            "export_url": reverse("admin:djangocms_supertext_export", args=[page.pk]),
+            "import_url": reverse("admin:djangocms_supertext_import", args=[page.pk]),
+            "export_error": export_error,
+            "import_error": import_error,
+            "import_results": import_results,
+            "max_upload": files.MAX_UPLOAD_BYTES,
             "languages": languages,
             "source": source,
             "configured": bool(options.api_key),
             "signup_url": conf.SIGNUP_URL,
             "api_key_url": conf.API_KEY_URL,
-            "results": [
-                {"result": r, "name": names.get(r.language, r.language), "url": _edit_url(page, r.language)}
-                for r in results or []
-            ],
+            "results": results or [],
             "is_popup": True,
         }
-        response = TemplateResponse(request, "djangocms_supertext/translate.html", context)
-        # Version report and key check after the response (an upgrade, a changed key, a rejected key).
-        reporting.report_translation(results if translated else [], options, request, response)
-        return response
+        return TemplateResponse(request, "djangocms_supertext/translate.html", context)
+
+    # -- translation files ---------------------------------------------------------------------
+
+    def export_view(self, request, page_id: int):
+        """Export for translation: answers with the XLIFF or HTML file as a download."""
+        page = self._page(request, page_id)
+        options = conf.load()
+        languages = translator.describe(page)
+        source = request.POST.get("export-source") or next((lang["code"] for lang in languages if lang["exists"]), "")
+        form = ExportForm(request.POST or None, languages=languages, source=source)
+        error = ""
+        if request.method == "POST" and form.is_valid():
+            try:
+                exported = files.export(page, form.cleaned_data["source"], form.cleaned_data["targets"], form.cleaned_data["format"], options)
+            except files.FileError as exc:
+                error = str(exc)
+            else:
+                response = HttpResponse(exported.content, content_type=exported.content_type)
+                response["Content-Disposition"] = f'attachment; filename="{exported.name}"'
+                response["X-Content-Type-Options"] = "nosniff"
+                response["Cache-Control"] = "no-store"
+                return response
+        return self._dialog(request, page, options, languages, source, export_form=form, export_error=error)
+
+    def import_view(self, request, page_id: int):
+        """Import translation: reads the uploaded file in memory and writes each job back."""
+        page = self._page(request, page_id)
+        options = conf.load()
+        form = ImportForm(request.POST or None, request.FILES or None)
+        error = ""
+        results = None
+        if request.method == "POST" and form.is_valid():
+            upload = form.cleaned_data["file"]
+            try:
+                files.check_size(upload.size)  # before anything is read
+                results = files.import_file(
+                    upload.read(),
+                    user=request.user,
+                    include_changed=form.cleaned_data["include_changed"],
+                    overwrite=form.cleaned_data["overwrite"],
+                    options=options,
+                )
+            except files.FileError as exc:
+                error = str(exc)
+            else:
+                form = ImportForm()
+        languages = translator.describe(page)
+        source = next((lang["code"] for lang in languages if lang["exists"]), "")
+        return self._dialog(request, page, options, languages, source, import_form=form, import_error=error,
+                            import_results=[_import_lines(r) for r in results] if results is not None else None)
 
     # -- settings ------------------------------------------------------------------------------
 
@@ -342,6 +442,23 @@ def _language_row(options: conf.Options, lang: dict) -> dict:
         "politeness_supported": bool(selected) and conf.Languages.supports_politeness(selected) is True,
         "politeness_unsupported": politeness != "default" and target is not None and conf.Languages.supports_politeness(target) is False,
     }
+
+
+def _import_lines(result: files.JobResult) -> dict:
+    """One job of an import for the dialog: its page, language, error or count lines."""
+    counts = result.counts
+    lines = []
+    if not result.error:
+        lines.append(_("Imported: %(count)s") % {"count": counts["ok"]})
+        for key, text in (
+            ("changed", _("Skipped, source changed since the export: %(count)s")),
+            ("untranslated", _("Not translated in the file: %(count)s")),
+            ("invalid", _("Formatting changed, not imported: %(count)s")),
+            ("missing", _("Not in the file: %(count)s")),
+        ):
+            if counts[key]:
+                lines.append(text % {"count": counts[key]})
+    return {"title": result.title, "language": result.language, "error": result.error, "lines": lines}
 
 
 def _edit_url(page, language: str) -> str:

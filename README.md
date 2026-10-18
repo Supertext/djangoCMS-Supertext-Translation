@@ -10,6 +10,7 @@ In edit mode, choose **Language → Translate with Supertext…**, tick the lang
 - Languages that exist are kept unless the editor explicitly overwrites them
 - Text, Link, Picture, File and Video plugins out of the box; more plugin fields by setting
 - Formal or informal tone and custom Supertext language codes per language
+- **Export for translation** (XLIFF 1.2 or HTML) for translation tools, translators or Supertext's web app, and **import of the translated file**
 - A settings page with an automatic API key check and *Test connection*, a translation log, management commands
 
 ![The Translate with Supertext dialog in the django CMS toolbar](docs/images/02-translate-dialog.png)

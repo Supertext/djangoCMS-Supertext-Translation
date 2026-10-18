@@ -437,3 +437,72 @@ msgstr "forme d’adresse"
 
 msgid "— choose —"
 msgstr "— choisir —"
+
+msgid "File format"
+msgstr "Format de fichier"
+
+msgid "XLIFF 1.2 (for translation tools)"
+msgstr "XLIFF 1.2 (pour les outils de traduction)"
+
+msgid "HTML (one language per file)"
+msgstr "HTML (une langue par fichier)"
+
+msgid "Translated file (XLIFF or HTML)"
+msgstr "Fichier traduit (XLIFF ou HTML)"
+
+msgid "Also import texts whose source changed since the export"
+msgstr "Importer aussi les textes dont la source a changé depuis l’export"
+
+msgid "Export for translation"
+msgstr "Exporter pour traduction"
+
+msgid "Import translation"
+msgstr "Importer une traduction"
+
+msgid "Download file"
+msgstr "Télécharger le fichier"
+
+msgid "Translate the file in a translation tool, by a translator or in the Supertext web app, then import it here."
+msgstr "Faites traduire le fichier dans un outil de traduction, par un traducteur ou dans l’application web Supertext, puis importez-le ici."
+
+msgid "The file is too large (at most 10 MB)."
+msgstr "Le fichier est trop volumineux (10 Mo au maximum)."
+
+msgid "Choose one language for an HTML file, or one or more for XLIFF."
+msgstr "Choisissez une langue pour un fichier HTML, ou une ou plusieurs pour XLIFF."
+
+msgid "Nothing to translate."
+msgstr "Rien à traduire."
+
+msgid "This file isn't a valid XLIFF or HTML translation file."
+msgstr "Ce fichier n’est pas un fichier de traduction XLIFF ou HTML valide."
+
+msgid "This file wasn't exported by the Supertext plugin, or its header was removed."
+msgstr "Ce fichier n’a pas été exporté par le plugin Supertext, ou son en-tête a été supprimé."
+
+msgid "This file belongs to another system (%(plugin)s)."
+msgstr "Ce fichier appartient à un autre système (%(plugin)s)."
+
+msgid "The page this file was exported from no longer exists."
+msgstr "La page à partir de laquelle ce fichier a été exporté n’existe plus."
+
+msgid "The site has no language %(language)s."
+msgstr "Le site n’a pas de langue %(language)s."
+
+msgid "You are not allowed to change this page."
+msgstr "Vous n’êtes pas autorisé à modifier cette page."
+
+msgid "Imported: %(count)s"
+msgstr "Importés : %(count)s"
+
+msgid "Skipped, source changed since the export: %(count)s"
+msgstr "Ignorés, source modifiée depuis l’export : %(count)s"
+
+msgid "Not translated in the file: %(count)s"
+msgstr "Non traduits dans le fichier : %(count)s"
+
+msgid "Formatting changed, not imported: %(count)s"
+msgstr "Mise en forme modifiée, non importés : %(count)s"
+
+msgid "Not in the file: %(count)s"
+msgstr "Absents du fichier : %(count)s"
